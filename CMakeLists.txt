@@ -39,9 +39,11 @@ add_executable(streaming_gateway_crow src/main.cpp src/cli.cpp src/http.cpp src/
 
 add_library(shared_memory_manager SHARED src/shared_memory_manager.cpp src/shared_memory_manager.h)
 
-add_executable(tests qa/test_shared_memory_manager.cpp src/logging.h
+add_executable(tests src/logging.h
         src/shared_memory_manager.cpp
         src/ipc_message_queue.cpp
+        qa/qa_main.cpp
+        qa/test_shared_memory_manager.h
 )
 
 add_executable(video_streamer src/HandleStreamDaemon.cpp src/webcam_streamer.cpp
