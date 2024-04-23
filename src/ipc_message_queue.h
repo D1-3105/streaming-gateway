@@ -9,16 +9,18 @@
 
 namespace ipc_queue
 {
+    struct QueueMetric {
+        long long message_cnt;
+    };
     struct Message {
         size_t dataLength;
-        char* data;
+        int* data;
         Message* next;
     };
-
-    void initializeQueue(SharedMemoryManager& manager, const char* region_name);
-
-    void enqueue(SharedMemoryManager& manager, Message* msg, const char* region_name);
-    ipc_queue::Message*  deque(SharedMemoryManager& manager, const char* region_name);
+    ipc_queue::QueueMetric* GetQueueMetric(SharedMemoryManager& manager, const char* region_name);
+    void InitializeQueue(SharedMemoryManager & manager, const char* region_name);
+    void Enqueue(SharedMemoryManager& manager, Message *msg, const char* region_name);
+    ipc_queue::Message*  Deque(SharedMemoryManager& manager, const char* region_name);
 }
 
 

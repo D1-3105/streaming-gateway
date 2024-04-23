@@ -366,3 +366,10 @@ nullptr_t SharedMemoryManager::UnlockMu() {
 bool SharedMemoryManager::IsLocked() {
     return !mu_.try_lock() || (mu_.unlock(), false);
 }
+
+SharedMemoryManager::SharedMemoryManager(SharedMemoryManager &manager) {
+    for (const auto& pair : manager.shared_memory_map_) {
+        auto newInfo = std::make_unique<SharedMemoryInfo>(*pair.second);
+        shared_memory_map_.emplace(pair.first, std::move(newInfo));
+    }
+}

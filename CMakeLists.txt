@@ -43,14 +43,18 @@ add_executable(tests src/logging.h
         src/shared_memory_manager.cpp
         src/ipc_message_queue.cpp
         qa/qa_main.cpp
-        qa/test_shared_memory_manager.h
+        qa/test_shared_memory_manager.hpp
+        qa/BaseTest.h
+        qa/test_webcam_streamer_queue.hpp
+        src/WebCam.cpp
+        src/WebCam.cpp
 )
 
 add_executable(video_streamer src/HandleStreamDaemon.cpp src/webcam_streamer.cpp
-        src/WebCam.cpp
         src/WebCam.h
         src/ipc_message_queue.cpp
         src/ipc_message_queue.h
+        src/WebCam.cpp
 )
 
 # flags for libs
@@ -59,9 +63,10 @@ target_link_options(streaming_gateway_crow PUBLIC -g)
 target_compile_options(shared_memory_manager PUBLIC -g)
 target_link_options(shared_memory_manager PUBLIC -g)
 target_link_options(tests PUBLIC -g)
+target_compile_options(tests PUBLIC -g)
 
 # linking
-target_link_libraries(streaming_gateway_crow ${Boost_LIBRARIES} ${OpenCV_LIBS} -lrt)
-target_link_libraries(tests ${Boost_LIBRARIES} -lrt)
-target_link_libraries(shared_memory_manager ${Boost_LIBRARIES} Boost::log)
-target_link_libraries(video_streamer ${OpenCV_LIBS} ${Boost_LIBRARIES} -lrt)
+target_link_libraries(streaming_gateway_crow ${Boost_LIBRARIES} ${OpenCV_LIBS} -lrt -lpthread)
+target_link_libraries(shared_memory_manager ${Boost_LIBRARIES} Boost::log -lpthread)
+target_link_libraries(tests shared_memory_manager ${Boost_LIBRARIES} ${OpenCV_LIBS} Boost::log -lrt -lpthread)
+target_link_libraries(video_streamer shared_memory_manager ${OpenCV_LIBS} ${Boost_LIBRARIES} Boost::log -lrt -lpthread)

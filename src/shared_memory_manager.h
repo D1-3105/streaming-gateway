@@ -56,9 +56,32 @@ private:
     std::string msg_;
 };
 
+struct SharedMemoryInfo {
+    SharedMemoryInfo(
+            const std::string& name, const std::string& shm_key,
+            const size_t offset, const size_t byte_size, const int shm_fd,
+            void* mapped_addr)
+            : name_(name), shm_key_(shm_key), offset_(offset),
+              byte_size_(byte_size), shm_fd_(shm_fd), mapped_addr_(mapped_addr)
+
+    {};
+
+    std::string name_;
+    std::string shm_key_;
+    size_t offset_;
+    size_t byte_size_;
+    int shm_fd_;
+    void* mapped_addr_;
+};
+using SharedMemoryStateMap =
+        std::map<std::string, std::unique_ptr<SharedMemoryInfo>>;
+
+
 class SharedMemoryManager {
 public:
     SharedMemoryManager() = default;
+
+    SharedMemoryManager(SharedMemoryManager& manager);
 
     ~SharedMemoryManager();
 
@@ -83,25 +106,6 @@ public:
     bool IsLocked();
 
 private:
-    struct SharedMemoryInfo {
-        SharedMemoryInfo(
-                const std::string& name, const std::string& shm_key,
-                const size_t offset, const size_t byte_size, const int shm_fd,
-                void* mapped_addr)
-                : name_(name), shm_key_(shm_key), offset_(offset),
-                  byte_size_(byte_size), shm_fd_(shm_fd), mapped_addr_(mapped_addr)
-
-        {};
-
-        std::string name_;
-        std::string shm_key_;
-        size_t offset_;
-        size_t byte_size_;
-        int shm_fd_;
-        void* mapped_addr_;
-    };
-    using SharedMemoryStateMap =
-            std::map<std::string, std::unique_ptr<SharedMemoryInfo>>;
     // A map between the name and the details of the associated
     // shared memory block
     SharedMemoryStateMap shared_memory_map_;

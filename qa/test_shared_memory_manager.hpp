@@ -2,40 +2,39 @@
 // Created by oleg on 22.04.24.
 //
 
-#ifndef STREAMINGGATEWAYCROW_TEST_SHARED_MEMORY_MANAGER_H
-#define STREAMINGGATEWAYCROW_TEST_SHARED_MEMORY_MANAGER_H
+#ifndef STREAMINGGATEWAYCROW_TEST_SHARED_MEMORY_MANAGER_HPP
+#define STREAMINGGATEWAYCROW_TEST_SHARED_MEMORY_MANAGER_HPP
 #include <iostream>
 #include <mutex>
 
 #include "../src/shared_memory_manager.h"
 #include "../src/logging.h"
 #include "../src/ipc_message_queue.h"
+#include "BaseTest.h"
 
 
-
-class TestSharedMemoryManager {
+class TestSharedMemoryManager: public BaseTest {
 public:
-    void runTests() {
+    void runTests() override {
         test_register_and_unregister();
         test_get_memory_info();
         test_ipc_message_queue();
     }
-
-private:
-    std::mutex lock;
-    SharedMemoryManager* manager;
-
-    void setUp()
+protected:
+    void setUp() override
     {
         lock.lock();
         manager = SharedMemoryManager_new();
     }
 
-    void tearDown()
+    void tearDown() override
     {
         SharedMemoryManager_delete(manager);
         lock.unlock();
     }
+private:
+    std::mutex lock;
+    SharedMemoryManager* manager;
 
     void test_register_and_unregister()
     {
@@ -94,20 +93,20 @@ private:
         RegisterSystemSharedMemory(manager, region_name, shm_key, offset, byte_size);
         assert(!MutexState(manager));
 
-        ipc_queue::initializeQueue(*manager, region_name);
+        ipc_queue::InitializeQueue(*manager, region_name);
 
         for (int i = 0; i < 5; ++i) {
             auto* msg = new ipc_queue::Message;
             msg->dataLength = sizeof(int);
-            msg->data = new char[msg->dataLength];
+            msg->data = new int[msg->dataLength];
             *reinterpret_cast<int*>(msg->data) = i;
             msg->next = nullptr;
 
-            ipc_queue::enqueue(*manager, msg, region_name);
+            ipc_queue::Enqueue(*manager, msg, region_name);
         }
-
+        SharedMemoryManager another_manager(*manager);
         for (int i = 0; i < 5; ++i) {
-            auto* message = ipc_queue::deque(*manager, region_name);
+            auto* message = ipc_queue::Deque(another_manager, region_name);
             if (message != nullptr) {
                 assert(*reinterpret_cast<int*>(message->data) == i);
                 delete[] message->data;
@@ -125,4 +124,4 @@ private:
 
 
 
-#endif //STREAMINGGATEWAYCROW_TEST_SHARED_MEMORY_MANAGER_H
+#endif //STREAMINGGATEWAYCROW_TEST_SHARED_MEMORY_MANAGER_HPP

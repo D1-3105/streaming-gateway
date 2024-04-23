@@ -7,36 +7,47 @@
 
 #include <boost/log/trivial.hpp>
 #include "HandleStreamDaemon.h"
+#include <pthread.h>
+#include "mutex"
 
 #include "opencv2/opencv.hpp"
+#include "shared_memory_manager.h"
 
 namespace webcam{
 
     class WebcamIterator {
     public:
-        explicit WebcamIterator(int device = 0) {
+        explicit WebcamIterator(int device = 0)
+        {
             cap.open(device, cv::CAP_GSTREAMER);
         }
 
-        ~WebcamIterator() {
+        ~WebcamIterator()
+        {
             cap.release();
         }
 
-        cv::Mat operator*() {
+        cv::Mat operator*()
+        {
             cv::Mat frame;
-            cap >> frame;
-            if (frame.empty()) {
-                BOOST_LOG_TRIVIAL(error) << "Empty frame captured!";
-                throw std::runtime_error("Empty frame captured!");
+            while (true) {
+                cap >> frame;
+                if (!frame.empty())
+                {
+                    break;
+                }
+                cv::waitKey(1);
             }
             return frame;
         }
 
-        WebcamIterator& operator++() {
+        WebcamIterator& operator++()
+        {
             return *this;
         }
 
-        bool operator!=(const WebcamIterator& other) const {
+        bool operator!=(const WebcamIterator& other) const
+        {
             return cap.isOpened();
         }
 
@@ -48,8 +59,8 @@ namespace webcam{
     public:
         explicit WebCamStream(int device = 0) : begin_(device), end_() {}
 
-        [[nodiscard]] WebcamIterator begin() const { return begin_; }
-        [[nodiscard]] WebcamIterator end() const { return end_; }
+        WebcamIterator begin() const { return begin_; }
+        WebcamIterator end() const { return end_; }
     private:
         WebcamIterator begin_;
         WebcamIterator end_;
@@ -58,8 +69,22 @@ namespace webcam{
 
 namespace wc_daemon {
     class WebCamStreamDaemon : public stream_daemon::HandleStreamDaemon {
+    private:
+        SharedMemoryManager* memoryManager;
+        std::mutex mu_;
+    protected:
+        const char* region_name_;
     public:
+        explicit WebCamStreamDaemon(
+                SharedMemoryManager* memManager,
+                const char* region_name
+        ): memoryManager(memManager), region_name_(region_name) {};
         void PutOnSHMQueue(void* iter_holder) override;
+        void ListenSHMQueue
+                (
+                        std::function<void*(const ipc_queue::Message *, size_t)> callback,
+                        long long prefetch_count
+                ) override;
     };
 };
 
