@@ -31,10 +31,16 @@ add_definitions(-DASIO_DISABLE_BOOST_DATE_TIME)
 add_definitions(-DASIO_DISABLE_BOOST_REGEX)
 
 # executables and libs
-add_executable(streaming_gateway_crow src/main.cpp src/cli.cpp src/http.cpp src/logging.h src/shared_memory_manager.cpp src/shared_memory_manager.h
-        src/webcam_streamer.cpp
+add_executable(streaming_gateway_crow src/main.cpp
+        src/cli.cpp
+        src/http.cpp
+        src/logging.h
+        src/shared_memory_manager.cpp
+        src/shared_memory_manager.h
         src/ipc_message_queue.cpp
         src/ipc_message_queue.h
+        src/exporters.cpp
+        src/exporters.h
 )
 
 add_library(shared_memory_manager SHARED src/shared_memory_manager.cpp src/shared_memory_manager.h)
@@ -48,13 +54,32 @@ add_executable(tests src/logging.h
         qa/test_webcam_streamer_queue.hpp
         src/WebCam.cpp
         src/WebCam.cpp
+        src/exporters.cpp
+        src/exporters.h
 )
 
-add_executable(video_streamer src/HandleStreamDaemon.cpp src/webcam_streamer.cpp
+add_executable(
+        video_streamer src/webcam_streamer.cpp   # i am redundant (for example)
+        src/HandleStreamDaemon.cpp
         src/WebCam.h
         src/ipc_message_queue.cpp
         src/ipc_message_queue.h
         src/WebCam.cpp
+        src/cli.cpp
+)
+
+add_executable(
+        video_handler src/HandleStreamDaemon.cpp  # i am redundant (for example)
+        src/HandleStreamDaemon.cpp
+        src/WebCam.cpp
+        src/WebCam.h
+
+        src/ipc_message_queue.cpp
+        src/ipc_message_queue.h
+        src/cli.cpp
+        src/webcam_handler.cpp
+        src/exporters.cpp
+        src/exporters.h
 )
 
 # flags for libs
@@ -65,8 +90,13 @@ target_link_options(shared_memory_manager PUBLIC -g)
 target_link_options(tests PUBLIC -g)
 target_compile_options(tests PUBLIC -g)
 
+target_link_options(video_handler PUBLIC -g)
+target_compile_options(video_handler PUBLIC -g)
+
 # linking
 target_link_libraries(streaming_gateway_crow ${Boost_LIBRARIES} ${OpenCV_LIBS} -lrt -lpthread)
 target_link_libraries(shared_memory_manager ${Boost_LIBRARIES} Boost::log -lpthread)
 target_link_libraries(tests shared_memory_manager ${Boost_LIBRARIES} ${OpenCV_LIBS} Boost::log -lrt -lpthread)
 target_link_libraries(video_streamer shared_memory_manager ${OpenCV_LIBS} ${Boost_LIBRARIES} Boost::log -lrt -lpthread)
+
+target_link_libraries(video_handler shared_memory_manager ${OpenCV_LIBS} ${Boost_LIBRARIES} Boost::log -lrt -lpthread)

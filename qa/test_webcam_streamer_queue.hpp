@@ -41,7 +41,7 @@ private:
         const char* region_name = "test_ipc_queue";
         const char* shm_key = "test_ipc_queue_key";
         int offset = 0;
-        int byte_size = sizeof(ipc_queue::Message);
+        int byte_size = 5*1024*1024;
 
         std::cout << "RegisterSystemSharedMemory in test_enqueue_dequeue_queue" << std::endl;
         RegisterSystemSharedMemory(manager, region_name, shm_key, offset, byte_size);

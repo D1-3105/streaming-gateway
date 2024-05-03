@@ -31,10 +31,15 @@ protected:
     {
         SharedMemoryManager_delete(manager);
         lock.unlock();
+        for(const std::string& v: on_teardown)
+        {
+            shm_unlink(v.c_str());
+        }
     }
 private:
     std::mutex lock;
     SharedMemoryManager* manager;
+    std::vector<std::string> on_teardown = {"test_key32", "test_ipc_queue_key"};
 
     void test_register_and_unregister()
     {
@@ -83,39 +88,41 @@ private:
     void test_ipc_message_queue()
     {
         setUp();
-
-        const char* region_name = "test_ipc_queue";
         const char* shm_key = "test_ipc_queue_key";
-        int offset = 0;
-        int byte_size = sizeof(ipc_queue::Message);
 
-        std::cout << "RegisterSystemSharedMemory in test_ipc_message_queue" << std::endl;
-        RegisterSystemSharedMemory(manager, region_name, shm_key, offset, byte_size);
-        assert(!MutexState(manager));
+        try{
+            const char* region_name = "test_ipc_queue";
+            int offset = 0;
+            int byte_size = 5*1024*1024;
 
-        ipc_queue::InitializeQueue(*manager, region_name);
+            std::cout << "RegisterSystemSharedMemory in test_ipc_message_queue" << std::endl;
+            RegisterSystemSharedMemory(manager, region_name, shm_key, offset, byte_size);
+            assert(!MutexState(manager));
 
-        for (int i = 0; i < 5; ++i) {
-            auto* msg = new ipc_queue::Message;
-            msg->dataLength = sizeof(int);
-            msg->data = new int[msg->dataLength];
-            *reinterpret_cast<int*>(msg->data) = i;
-            msg->next = nullptr;
+            ipc_queue::InitializeQueue(*manager, region_name);
 
-            ipc_queue::Enqueue(*manager, msg, region_name);
-        }
-        SharedMemoryManager another_manager(*manager);
-        for (int i = 0; i < 5; ++i) {
-            auto* message = ipc_queue::Deque(another_manager, region_name);
-            if (message != nullptr) {
-                assert(*reinterpret_cast<int*>(message->data) == i);
-                delete[] message->data;
-                delete message;
+            for (int i = 0; i < 5; ++i) {
+                auto* msg = new ipc_queue::Message;
+                msg->dataLength = 1;
+                msg->data = new int[msg->dataLength];
+                *reinterpret_cast<int*>(msg->data) = i;
+                msg->nextMessageStart = 0;
+
+                ipc_queue::Enqueue(*manager, msg, region_name);
             }
+            SharedMemoryManager another_manager(*manager);
+            for (int i = 0; i < 5; ++i) {
+                auto* message = ipc_queue::Deque(another_manager, region_name);
+                if (message != nullptr) {
+                    assert(*reinterpret_cast<int*>(message->data) == i);
+                    delete[] message->data;
+                    delete message;
+                }
+            }
+            Unregister(manager, region_name);
+        } catch (std::exception& e) {
+            throw e;
         }
-
-        Unregister(manager, region_name);
-
         tearDown();
     }
 };

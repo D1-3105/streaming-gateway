@@ -22,12 +22,12 @@ void wc_daemon::WebCamStreamDaemon::PutOnSHMQueue(void *iter_holder) {
     ipc_queue::Message* msg = new ipc_queue::Message;
     msg->dataLength = sizeof(mat);
     msg->data = data_ptr;
-    msg->next = nullptr;
+    msg->nextMessageStart = 0;
     ipc_queue::Enqueue(*memoryManager, msg, region_name_);
 }
 
 
-void* wait_for_messages(const long long* value, void *arg)
+void* wait_for_messages(const ulong* value, void *arg)
 {
     pthread_mutex_lock(&mutex);
     while (*value <= 0)
@@ -55,3 +55,5 @@ void wc_daemon::WebCamStreamDaemon::ListenSHMQueue
     }
     callback(message_buffer, prefetch_count);
 }
+
+

@@ -8,6 +8,7 @@
 #include <map>
 #include <memory>
 #include <mutex>
+#include <utility>
 #include <vector>
 
 #include <errno.h>
@@ -28,12 +29,12 @@
 #include <boost/log/utility/setup/console.hpp>
 
 
-template<typename _Mutex>
+template<typename Mutex>
 class SharedLockGuard {
 private:
-    std::lock_guard<_Mutex> lg;
+    std::lock_guard<Mutex> lg;
 public:
-    typedef _Mutex mutex_type;
+    typedef Mutex mutex_type;
     SharedLockGuard() = default;
 
     explicit SharedLockGuard(mutex_type& m): lg(m) {
@@ -48,8 +49,8 @@ public:
 
 class SharedMemoryException : public std::exception {
 public:
-    explicit SharedMemoryException(const std::string& message) : msg_(message) {}
-    const char* what() const noexcept override {
+    explicit SharedMemoryException(std::string  message) : msg_(std::move(message)) {}
+    [[nodiscard]] const char* what() const noexcept override {
         return msg_.c_str();
     }
 private:
@@ -58,10 +59,10 @@ private:
 
 struct SharedMemoryInfo {
     SharedMemoryInfo(
-            const std::string& name, const std::string& shm_key,
+            std::string  name, std::string shm_key,
             const size_t offset, const size_t byte_size, const int shm_fd,
             void* mapped_addr)
-            : name_(name), shm_key_(shm_key), offset_(offset),
+            : name_(std::move(name)), shm_key_(std::move(shm_key)), offset_(offset),
               byte_size_(byte_size), shm_fd_(shm_fd), mapped_addr_(mapped_addr)
 
     {};
@@ -104,6 +105,8 @@ public:
     nullptr_t UnlockMu();
 
     bool IsLocked();
+
+    SharedMemoryInfo* GetMemoryMap(std::string name);
 
 private:
     // A map between the name and the details of the associated

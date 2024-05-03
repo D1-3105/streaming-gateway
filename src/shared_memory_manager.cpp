@@ -373,3 +373,12 @@ SharedMemoryManager::SharedMemoryManager(SharedMemoryManager &manager) {
         shared_memory_map_.emplace(pair.first, std::move(newInfo));
     }
 }
+
+SharedMemoryInfo* SharedMemoryManager::GetMemoryMap(std::string mem_name) {
+    auto it = shared_memory_map_.find(mem_name);
+    if (it!= shared_memory_map_.end()) {
+        return it->second.get();
+    }
+    return nullptr;
+}
+

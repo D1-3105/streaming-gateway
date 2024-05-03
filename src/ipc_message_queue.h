@@ -10,12 +10,19 @@
 namespace ipc_queue
 {
     struct QueueMetric {
-        long long message_cnt;
+        unsigned long message_cnt;
+        unsigned long head_position;
+        unsigned long rear_position;
+
+        static ulong struct_size(){
+            return sizeof(ulong ) * 3;
+        }
     };
+
     struct Message {
         size_t dataLength;
         int* data;
-        Message* next;
+        unsigned long nextMessageStart;
     };
     ipc_queue::QueueMetric* GetQueueMetric(SharedMemoryManager& manager, const char* region_name);
     void InitializeQueue(SharedMemoryManager & manager, const char* region_name);
