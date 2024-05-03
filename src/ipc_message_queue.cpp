@@ -8,12 +8,12 @@
 ulong
 PutOnSHM(ipc_queue::Message& msg, ulong message_start, const SharedMemoryInfo& region_info_)
 {
-    uint message_size = sizeof(msg.dataLength) + sizeof(int) * msg.dataLength + sizeof(uint);
+    uint message_size = sizeof(msg.dataLength) + sizeof(int) * msg.dataLength + sizeof(ulong);
     if (!message_start)
     {
         throw std::runtime_error("Invalid message start on PutOnSHM");
     }
-    ulong true_message_start = message_start;
+    ulong true_message_start;
     uint cummOffset = 0;
     if (message_size + message_start <= region_info_.byte_size_ + region_info_.offset_ + (ulong) region_info_.mapped_addr_)
     {
@@ -21,7 +21,7 @@ PutOnSHM(ipc_queue::Message& msg, ulong message_start, const SharedMemoryInfo& r
     }
     else
     {
-        true_message_start = region_info_.byte_size_ + region_info_.offset_;
+        true_message_start = (ulong) region_info_.mapped_addr_ + region_info_.offset_;
     }
     msg.nextMessageStart = message_size + true_message_start;
     memcpy(reinterpret_cast<void *>(true_message_start + cummOffset), &msg.dataLength, sizeof(msg.dataLength) );
@@ -65,15 +65,6 @@ incrementQueueStat(void* metric, long long message_cnt)
 }
 
 void
-setup_Head(void* metric, ulong probable_head)
-{
-    ipc_queue::QueueMetric* metric_demarshaled;
-    metric_demarshaled = static_cast<ipc_queue::QueueMetric*>(metric);
-    if (!metric_demarshaled->head_position)
-        metric_demarshaled->head_position = probable_head;
-}
-
-void
 set_Rear(void* metric, ulong rear)
 {
     ipc_queue::QueueMetric* metric_demarshaled;
@@ -105,6 +96,15 @@ get_Head(void* metric)
     ipc_queue::QueueMetric* metric_demarshaled;
     metric_demarshaled = static_cast<ipc_queue::QueueMetric*>(metric);
     return metric_demarshaled->head_position;
+}
+
+void
+setup_Head(void* metric, ulong probable_head)
+{
+    ipc_queue::QueueMetric* metric_demarshaled;
+    metric_demarshaled = static_cast<ipc_queue::QueueMetric*>(metric);
+    if (!get_Head(metric))
+        metric_demarshaled->head_position = probable_head;
 }
 
 ipc_queue::QueueMetric*
@@ -147,12 +147,14 @@ ipc_queue::Enqueue(SharedMemoryManager& manager, Message *msg, const char* regio
     ulong startAddress = get_Rear(metric);
     if (startAddress == 0) {
         startAddress = (ulong) queueStartAddress;
+    } else {
+        startAddress = GetFromSHM(startAddress).nextMessageStart;
     }
 
     ulong new_start = PutOnSHM(*msg, (ulong) startAddress, *manager.GetMemoryMap(region_name));
     incrementQueueStat(metric, 1);
     setup_Head(metric, new_start);
-    set_Rear(metric, msg->nextMessageStart);
+    set_Rear(metric, new_start);
 }
 
 
@@ -170,11 +172,6 @@ ipc_queue::Deque(SharedMemoryManager& manager, const char* region_name)
     {
         throw std::runtime_error("Queue is improperly allocated!");
     }
-    if(head == (ulong) queueStartAddress)
-    {
-        return nullptr;
-    }
-
     auto* msg = new ipc_queue::Message();
     ipc_queue::Message copy_from = GetFromSHM(head);
     msg->nextMessageStart = copy_from.nextMessageStart;

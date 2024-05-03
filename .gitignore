@@ -44,3 +44,4 @@ install_manifest.txt
 bin/
 venv/
 build/*
+video_repo
