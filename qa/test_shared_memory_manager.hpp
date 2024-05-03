@@ -104,7 +104,7 @@ private:
             for (int i = 0; i < 5; ++i) {
                 auto* msg = new ipc_queue::Message;
                 msg->dataLength = 1;
-                msg->data = new int[msg->dataLength];
+                msg->data = new u_char[msg->dataLength];
                 *reinterpret_cast<int*>(msg->data) = i;
                 msg->nextMessageStart = 0;
 
@@ -114,7 +114,7 @@ private:
             for (int i = 0; i < 5; ++i) {
                 auto* message = ipc_queue::Deque(another_manager, region_name);
                 if (message != nullptr) {
-                    assert(*reinterpret_cast<int*>(message->data) == i);
+                    assert(*message->data == i);
                     delete[] message->data;
                     delete message;
                 }

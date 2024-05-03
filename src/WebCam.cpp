@@ -7,7 +7,6 @@
 pthread_cond_t cond = PTHREAD_COND_INITIALIZER;
 pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
 
-
 void wc_daemon::WebCamStreamDaemon::PutOnSHMQueue(void *iter_holder) {
     if (!iter_holder) {
         BOOST_LOG_TRIVIAL(error) << "Error: iter_holder is a null pointer!";
@@ -17,11 +16,17 @@ void wc_daemon::WebCamStreamDaemon::PutOnSHMQueue(void *iter_holder) {
     std::lock_guard<std::mutex> guard(mu_);
     auto stream = static_cast<webcam::WebCamStream*>(iter_holder);
     cv::Mat mat = stream->begin().operator*();
-    int *data_ptr = reinterpret_cast<int*>(mat.data);
 
-    ipc_queue::Message* msg = new ipc_queue::Message;
-    msg->dataLength = sizeof(mat);
-    msg->data = data_ptr;
+    if (!mat.isContinuous()) {
+        mat = mat.clone();
+    }
+
+    size_t data_bytes = mat.total() * mat.elemSize();
+
+    auto* msg = new ipc_queue::Message;
+    msg->dataLength = data_bytes;
+    msg->data = new u_char[data_bytes];
+    memcpy(msg->data, mat.data, data_bytes);
     msg->nextMessageStart = 0;
     ipc_queue::Enqueue(*memoryManager, msg, region_name_);
 }

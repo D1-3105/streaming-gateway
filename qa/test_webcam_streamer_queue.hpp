@@ -31,37 +31,43 @@ protected:
     void tearDown() override
     {
         SharedMemoryManager_delete(manager);
+        shm_unlink("test_ipc_queue_key");
         lock.unlock();
     }
 private:
     void test_enqueue_dequeue_queue()
     {
         setUp();
-
-        const char* region_name = "test_ipc_queue";
         const char* shm_key = "test_ipc_queue_key";
-        int offset = 0;
-        int byte_size = 5*1024*1024;
 
-        std::cout << "RegisterSystemSharedMemory in test_enqueue_dequeue_queue" << std::endl;
-        RegisterSystemSharedMemory(manager, region_name, shm_key, offset, byte_size);
+        try {
+            const char* region_name = "test_ipc_queue";
+            int offset = 0;
+            int byte_size = 10 * 50*1024*1024; // 500mb - test purposes
 
-        wc_daemon::WebCamStreamDaemon wc_d(manager, region_name);
-        webcam::WebcamIterator stream_iterator;
+            std::cout << "RegisterSystemSharedMemory in test_enqueue_dequeue_queue" << std::endl;
+            RegisterSystemSharedMemory(manager, region_name, shm_key, offset, byte_size);
 
-        for (int i = 0; i < 100; i++)
-            wc_d.PutOnSHMQueue(&stream_iterator);
+            wc_daemon::WebCamStreamDaemon wc_d(manager, region_name);
+            webcam::WebcamIterator stream_iterator;
 
-        long long batch_size = 10;
+            for (int i = 0; i < 100; i++)
+                wc_d.PutOnSHMQueue(&stream_iterator);
 
-        auto listen_assertion = [batch_size] (const ipc_queue::Message* messages, size_t size) {
-            for(size_t i = 0; i < size; i++)
-            {
-                assert(messages[i].data != nullptr);
-            }
-            return nullptr;
-        };
-        wc_d.ListenSHMQueue(listen_assertion, batch_size);
+            long long batch_size = 5;
+
+            auto listen_assertion = [batch_size] (const ipc_queue::Message* messages, size_t size) {
+                for(size_t i = 0; i < size; i++)
+                {
+                    assert(messages[i].data != nullptr);
+                }
+                return nullptr;
+            };
+            wc_d.ListenSHMQueue(listen_assertion, batch_size);
+        } catch (std::exception& e) {
+            throw e;
+        }
+
 
         tearDown();
     }

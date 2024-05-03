@@ -21,7 +21,7 @@ namespace ipc_queue
 
     struct Message {
         size_t dataLength;
-        int* data;
+        u_char* data;
         unsigned long nextMessageStart;
     };
     ipc_queue::QueueMetric* GetQueueMetric(SharedMemoryManager& manager, const char* region_name);

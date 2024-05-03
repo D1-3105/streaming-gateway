@@ -35,7 +35,7 @@ PutOnSHM(ipc_queue::Message& msg, ulong message_start, const SharedMemoryInfo& r
     memcpy(
             reinterpret_cast<void *>(true_message_start + cummOffset),
             msg.data,
-            msg.dataLength * sizeof(int)
+            msg.dataLength * sizeof(u_char)
     );
     return true_message_start;
 }
@@ -50,9 +50,8 @@ GetFromSHM(ulong message_start) {
 
     memcpy(&msg.nextMessageStart, reinterpret_cast<const void *>(message_start + cummOffset), sizeof(msg.nextMessageStart));
     cummOffset += sizeof(msg.nextMessageStart);
-    msg.data = new int[msg.dataLength];
-    memcpy(msg.data, reinterpret_cast<const void *>(message_start + cummOffset), msg.dataLength * sizeof(int));
-
+    msg.data = new u_char[msg.dataLength];
+    memcpy(msg.data, reinterpret_cast<const void *>(message_start + cummOffset), msg.dataLength * sizeof(u_char));
     return msg;
 }
 
@@ -125,7 +124,7 @@ ipc_queue::InitializeQueue(SharedMemoryManager& manager, const char* region_name
     metric_demarshaled->message_cnt = 0;
     // queue data
     void* queueStartAddress = nullptr;
-    manager.GetMemoryInfo(region_name, metric_demarshaled->struct_size(), 5 * 1024 * 1024 - metric_demarshaled->struct_size(), &queueStartAddress);
+    manager.GetMemoryInfo(region_name, ipc_queue::QueueMetric::struct_size(), 5 * 1024 * 1024 - ipc_queue::QueueMetric::struct_size(), &queueStartAddress);
     metric_demarshaled->head_position = (ulong) queueStartAddress;
 }
 
