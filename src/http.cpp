@@ -12,8 +12,10 @@ crow::SimpleApp httpServer::buildApp()
     return app;
 }
 
-void httpServer::serveApp(int port)
+void* httpServer::serveApp(void* args)
 {
+    int port = *(int*) args;
     auto app = buildApp();
     app.port(port).run();
+    return nullptr;
 }

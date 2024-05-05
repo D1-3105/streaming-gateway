@@ -37,18 +37,15 @@ struct PuttingThreadArgs {
     while (true) {
         wc_d.PutOnSHMQueue(&stream_iterator);
     }
-
-    // You should never reach this point, as the loop runs indefinitely
-    return nullptr;
 }
 
 int main(int argc, char *argv[]) {
     logging::init_logging();
 
     std::map<std::string, std::string> commandLineArguments = cli::parseArgs(argc, argv);
-    region = commandLineArguments.find("region_name")->second;
+    region = "shm_queue";
     const std::string shm_key = commandLineArguments.find("shm_key")->second;
-    const std::string q_byte_size = commandLineArguments.find("region_byte_size")->second;
+    const std::string q_byte_size = commandLineArguments.find("shm_size")->second;
 
     char *endptr;
     int byte_size = std::strtol(q_byte_size.c_str(), &endptr, 10);

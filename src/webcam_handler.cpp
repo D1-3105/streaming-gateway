@@ -26,9 +26,9 @@ int main(int argc, char *argv[])
 {
     logging::init_logging();
     std::map<std::string, std::string> commandLineArguments = cli::parseArgs(argc, argv);
-    region = commandLineArguments.find("region_name")->second;
+    region = std::string("shm_queue");
     std::string shm_key = commandLineArguments.find("shm_key")->second;
-    std::string q_byte_size = commandLineArguments.find("region_byte_size")->second;
+    std::string q_byte_size = commandLineArguments.find("shm_size")->second;
     std::string video_repository = commandLineArguments.find("video_repository")->second;
 
     char *endptr;
@@ -48,7 +48,7 @@ int main(int argc, char *argv[])
 
     exporters::FileBaseHLSMessageHandler fb_hls_handler(
             &wc_d,
-            24,
+            10,
             video_repository.c_str()
     );
     fb_hls_handler.HandleMessages();  // threads here

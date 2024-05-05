@@ -9,7 +9,7 @@
 namespace httpServer
 {
     crow::SimpleApp buildApp();
-    void serveApp(int port);
+    void* serveApp(void* args);
 }
 
 #endif //STREAMING_GATEWAY_CROW_HTTP_H

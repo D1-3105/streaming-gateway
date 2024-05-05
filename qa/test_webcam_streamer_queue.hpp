@@ -25,7 +25,7 @@ class TestWebcamStreamerQueue: public BaseTest {
 public:
     void runTests() override
     {
-        //test_enqueue_dequeue_queue();
+        test_enqueue_dequeue_queue();
         test_hls_exporter();
     }
 protected:
@@ -138,13 +138,6 @@ private:
         sleep(2);
         pthread_cancel(listener_t);
         pthread_join(listener_t, nullptr);
-//        TestWebcamStreamerQueue::publisherStatic(this);
-//        BOOST_LOG_TRIVIAL(info) << "Metric after publisher: " <<
-//                                    shm_queue::GetQueueMetric(
-//                                            *manager,
-//                                            region_name.c_str()
-//                                    )->message_cnt;
-//        TestWebcamStreamerQueue::listenerStatic(this);
         tearDown();
     }
 };
