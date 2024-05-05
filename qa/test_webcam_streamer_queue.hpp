@@ -128,7 +128,7 @@ private:
         const char* shm_key = "test_ipc_queue_key";
 
         int offset = 0;
-        int byte_size = 10 * 50*1024*1024; // 500mb - test purposes
+        int byte_size = 50 * 1024 * 1024; // 50mb - test purposes
 
         RegisterSystemSharedMemory(manager, region_name.c_str(), shm_key, offset, byte_size);
 

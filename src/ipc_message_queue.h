@@ -46,6 +46,18 @@ namespace shm_queue
             void* tmp = Message::GetPtrOnNextOnSHM(base_addr);
             return (void*) ((ulong) tmp + sizeof(ulong));
         }
+
+        [[nodiscard]] size_t MessageSizeOnSHM() const
+        {
+            size_t message_size = sizeof(size_t) + dataLength * sizeof(u_char) + sizeof(void*) + sizeof(bool);
+            return message_size;
+        }
+
+        static size_t MessageSizeWithoutDataOnSHM()
+        {
+            size_t message_size = sizeof(size_t) + sizeof(void*) + sizeof(bool);
+            return message_size;
+        }
     };
 
     struct QueueMetric {

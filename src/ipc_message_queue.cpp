@@ -27,22 +27,15 @@ GetFromSHM(void* message_start)
 void
 PutOnSHM(shm_queue::Message* msg, void*& message_start, const SharedMemoryInfo& region_info_)
 {
-    uint message_size = sizeof(size_t) + msg->dataLength * sizeof(u_char) + sizeof(shm_queue::Message*) + sizeof(bool);
+    size_t message_size = msg->MessageSizeOnSHM();
     if (!message_start)
     {
         throw std::runtime_error("Invalid message start on PutOnSHM");
     }
 
     void* true_message_start;
-    auto current_offset = reinterpret_cast<uintptr_t>(message_start);
-    if (current_offset + message_size <= region_info_.byte_size_ + region_info_.offset_ + reinterpret_cast<uintptr_t>(region_info_.mapped_addr_))
-    {
-        true_message_start = message_start;
-    }
-    else
-    {
-        true_message_start = reinterpret_cast<shm_queue::Message*>(reinterpret_cast<uintptr_t>(region_info_.mapped_addr_) + region_info_.offset_);
-    }
+
+    true_message_start = message_start;
     void* temp;
 
     temp = shm_queue::Message::GetPtrOnProcessedOnSHM(true_message_start);
@@ -109,6 +102,51 @@ shm_queue::InitializeQueue(SharedMemoryManager& manager, const char* region_name
     metric_demarshaled->rear_position = nullptr;
 }
 
+std::vector<void*>
+TraversalQueue(void* start, size_t max_offset)
+{
+    void* current = start;
+    std::vector<void*> addresses;
+    ulong traversal_distance = 0;
+    do
+    {
+        addresses.push_back(current);
+        void* temp = reinterpret_cast<void**>(shm_queue::Message::GetPtrOnNextOnSHM(const_cast<void *>(current)));
+        size_t message_size_no_data = shm_queue::Message::MessageSizeWithoutDataOnSHM();
+        size_t message_data_length = *reinterpret_cast<size_t*>(shm_queue::Message::GetPtrOnDataLengthOnSHM(current));
+        traversal_distance += message_size_no_data + message_data_length;
+        current = temp;
+    } while (traversal_distance < max_offset);
+    return addresses;
+}
+
+bool
+AnyMessageInProgress(const std::vector<void*>& addresses)
+{
+    for(auto address: addresses)
+    {
+        bool processed = *static_cast<bool*>(shm_queue::Message::GetPtrOnProcessedOnSHM(address));
+        if (!processed)
+        {
+            return true;
+        }
+    }
+    return false;
+}
+
+void
+JoinListener(void*& head, shm_queue::Message* msg)
+{
+    std::vector<void *> neighbour_addresses;
+    neighbour_addresses = TraversalQueue(const_cast<void*>(head), msg->MessageSizeOnSHM());
+    do {
+        std::this_thread::sleep_for(std::chrono::milliseconds(1));
+    }
+    while (
+            AnyMessageInProgress(neighbour_addresses)
+    );
+}
+
 void
 shm_queue::Enqueue(SharedMemoryManager& manager, Message *msg, const char* region_name)
 {
@@ -130,21 +168,37 @@ shm_queue::Enqueue(SharedMemoryManager& manager, Message *msg, const char* regio
         void** ptrToNextMessage = reinterpret_cast<void**>(Message::GetPtrOnNextOnSHM(startAddress));
         startAddress = *ptrToNextMessage;
     }
-
-    if (startAddress == nullptr)
-    {
-        throw std::runtime_error("Exception during startAddress allocation!");
-    }
     auto region_info = *manager.GetMemoryMap(region_name);
     if (!region_info.mapped_addr_)
     {
         throw std::runtime_error("Improperly configured region_info detected!");
     }
+    if ((ulong)queueStartAddress + region_info.byte_size_ <= (ulong) startAddress + msg->MessageSizeOnSHM()) // queue overflow
+    {
+        BOOST_LOG_TRIVIAL(info) << "Message queue overflow detected; Joining listener";
+        JoinListener(queueStartAddress, msg);
+        BOOST_LOG_TRIVIAL(info) << "Listener fetched entire queue";
+        startAddress = queueStartAddress;
+    }
+
+    if (startAddress == nullptr)
+    {
+        throw std::runtime_error("Exception during startAddress allocation!");
+    }
 
     PutOnSHM(msg, (void*&)startAddress, region_info);
-    incrementQueueStat(metric, 1);
-    setup_Head(metric, startAddress);
     metric->rear_position = startAddress;
+
+    if (queueStartAddress != startAddress)
+    {
+        setup_Head(metric, startAddress);
+        incrementQueueStat(metric, 1);
+    }
+    else
+    {
+        metric->head_position = startAddress;
+        metric->message_cnt = 1;
+    }
 }
 
 
@@ -167,7 +221,9 @@ shm_queue::Deque(SharedMemoryManager& manager, const char* region_name)
     if (temp)
     {
         *((bool*) temp) = true;
-    } else {
+    }
+    else
+    {
         throw QueueException("Message publish terminated!");
     }
 
