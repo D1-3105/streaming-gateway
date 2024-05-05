@@ -14,7 +14,6 @@ message(STATUS "Boost libraries: ${Boost_LIBRARIES}")
 # Opencv with FFmpeg
 find_package(OpenCV REQUIRED)
 set(OpenCV_FIND_QUIETLY FALSE)
-set(WITH_GSTREAMER ON)
 message(STATUS "OpenCV version: ${OpenCV_VERSION}")
 message(STATUS "OpenCV libraries: ${OpenCV_LIBS}")
 

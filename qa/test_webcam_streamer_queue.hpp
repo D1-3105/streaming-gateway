@@ -36,7 +36,7 @@ protected:
     {
         lock.lock();
         manager = SharedMemoryManager_new();
-        video_repository = "/home/oleg/CLionProjects/streaming-gateway-crow/video_repo";
+        video_repository = "/home/oleg/CLionProjects/streaming-gateway-crow/video_repository";
         region_name = "test_ipc_video";
     }
 
@@ -135,6 +135,8 @@ private:
         pthread_create(&listener_t, nullptr, &TestWebcamStreamerQueue::listenerStatic, this);
         pthread_create(&publisher_t, nullptr, &TestWebcamStreamerQueue::publisherStatic, this);
         pthread_join(publisher_t, nullptr);
+        sleep(2);
+        pthread_cancel(listener_t);
         pthread_join(listener_t, nullptr);
         TestWebcamStreamerQueue::publisherStatic(this);
 //        BOOST_LOG_TRIVIAL(info) << "Metric after publisher: " <<

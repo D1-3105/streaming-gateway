@@ -15,7 +15,7 @@
                     std::forward<decltype(PH2)>(PH2)
             );
         };
-        daemon_fetcher_->ListenSHMQueue(boundFunc, 5 * frame_rate_);
+        daemon_fetcher_->ListenSHMQueue(boundFunc, frame_rate_);
     }
 }
 
@@ -57,7 +57,7 @@ void exporters::FileBaseHLSMessageHandler::unmarshalMessages(const shm_queue::Me
 int readLastSegmentNumber(const std::string& playlistPath) {
     std::ifstream m3u8File(playlistPath);
     std::string line;
-    std::regex tsRegex("output(\\d+)\\.ts");
+    std::regex tsRegex("output(\\d+)\\.mp4");
     int lastSegment = -1;
 
     if (m3u8File.is_open()) {
