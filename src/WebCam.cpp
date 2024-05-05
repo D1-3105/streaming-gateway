@@ -2,12 +2,37 @@
 // Created by oleg on 22.04.24.
 //
 
+#include <sys/sem.h>
 #include "WebCam.h"
+#include "constants.h"
+#include "utils.h"
 
 pthread_cond_t cond = PTHREAD_COND_INITIALIZER;
 pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
 
+
 void wc_daemon::WebCamStreamDaemon::PutOnSHMQueue(void *iter_holder) {
+    if (!initialized_publisher_) {
+        shm_queue::InitializeQueue(*memoryManager_, region_name_);
+        int sema_desc = GetSema();
+
+        union semun {
+            int val;
+            struct semid_ds *buf;
+            unsigned short *array;
+        } semarg;
+        pid_t p = getppid();
+        semarg.val = crc::crc8((uint8_t*)&p, sizeof(pid_t) / sizeof(uint8_t));  // Set semaphore to parent process ID
+        int sem_res = semctl(sema_desc, 0, SETVAL, semarg);
+        if (sem_res == -1)
+        {
+            perror("semctl");
+            throw std::runtime_error("Error during semaphore acquiring!");
+        }
+        BOOST_LOG_TRIVIAL(info) << "Semaphore #" << sema_desc << " unlocked with value: " << semarg.val;
+    }
+
+    initialized_publisher_ = true;
     if (!iter_holder) {
         BOOST_LOG_TRIVIAL(error) << "Error: iter_holder is a null pointer!";
         return;
@@ -15,22 +40,30 @@ void wc_daemon::WebCamStreamDaemon::PutOnSHMQueue(void *iter_holder) {
 
     std::lock_guard<std::mutex> guard(mu_);
     auto stream = static_cast<webcam::WebCamStream*>(iter_holder);
-    cv::Mat mat = stream->begin().operator*();
-
-    if (!mat.isContinuous()) {
-        mat = mat.clone();
-    }
+    cv::Mat mat = stream->begin().matrix();
 
     size_t data_bytes = mat.total() * mat.elemSize();
 
-    auto* msg = new ipc_queue::Message;
-    msg->dataLength = data_bytes;
-    msg->data = new u_char[data_bytes];
-    memcpy(msg->data, mat.data, data_bytes);
-    msg->nextMessageStart = 0;
-    ipc_queue::Enqueue(*memoryManager, msg, region_name_);
-}
+    auto msg = std::make_unique<shm_queue::Message>();
+    size_t mat_content_offset = 3 * video_constants::int2uchar + video_constants::size_t2uchar;
 
+    msg->dataLength = data_bytes + mat_content_offset;
+    msg->data = new u_char[msg->dataLength];
+    int* cols = &mat.cols;
+    int* rows = &mat.rows;
+    size_t step = mat.step;
+    int type = mat.type();
+
+    memcpy(msg->data, cols,  video_constants::int2uchar);
+    memcpy(msg->data + video_constants::int2uchar, rows, video_constants::int2uchar);
+    memcpy(msg->data + 2 * video_constants::int2uchar, &type, video_constants::int2uchar);
+    memcpy(msg->data + 3 * video_constants::int2uchar, &step, video_constants::size_t2uchar);
+    memcpy(msg->data + mat_content_offset, mat.data, data_bytes);
+
+    msg->nextMessageStart = nullptr;
+
+    shm_queue::Enqueue(*memoryManager_, msg.get(), region_name_);
+}
 
 void* wait_for_messages(const ulong* value, void *arg)
 {
@@ -44,21 +77,42 @@ void* wait_for_messages(const ulong* value, void *arg)
 }
 
 void wc_daemon::WebCamStreamDaemon::ListenSHMQueue
-(
-        std::function<void*(const ipc_queue::Message *, size_t)> callback,
-        long long prefetch_count
-)
+        (
+                std::function<void*(const shm_queue::Message *, size_t)> callback,
+                long long prefetch_count
+        )
 {
     std::lock_guard<std::mutex> guard(mu_);
 
-    auto* message_buffer = new ipc_queue::Message[prefetch_count];
-    auto metric = ipc_queue::GetQueueMetric(*memoryManager, region_name_);
+    if (!initialized_publisher_)
+    {
+        BOOST_LOG_TRIVIAL(info) << "Waiting for publisher...";
+        int semaphore_desc = GetSema();
+        pid_t p = getppid();
+        int sem_value = crc::crc8((uint8_t*)&p, sizeof(pid_t) / sizeof(uint8_t));
+        BOOST_LOG_TRIVIAL(info) << "Expected handshake: " << sem_value;
+        utils::waitForSemaphoreValue(semaphore_desc, sem_value);
+        BOOST_LOG_TRIVIAL(info) << "Publisher online!";
+    }
+    initialized_publisher_ = true;
+
+    auto* message_buffer = new shm_queue::Message[prefetch_count];
+    auto metric = shm_queue::GetQueueMetric(*memoryManager_, region_name_);
+    size_t prefetched = 0;
+
     for (size_t i = 0; i < prefetch_count; i++)
     {
         wait_for_messages(&(metric->message_cnt), nullptr);
-        message_buffer[i] = *ipc_queue::Deque(*memoryManager, region_name_);
+        try {
+            message_buffer[i] = *shm_queue::Deque(*memoryManager_, region_name_);
+            prefetched ++;
+        } catch(shm_queue::QueueException& e) {
+            BOOST_LOG_TRIVIAL(error) << e.what();
+            break;
+        }
     }
-    callback(message_buffer, prefetch_count);
+    callback(message_buffer, prefetched);
 }
+
 
 

@@ -25,7 +25,7 @@ int main(int argc, char *argv[])
             const std::string executable = commandLineArguments.find("exe_path")->second;
             const std::string region = commandLineArguments.find("region_name")->second;
             const std::string shm_key = commandLineArguments.find("shm_key")->second;
-            int byte_size = sizeof(ipc_queue::Message);
+            int byte_size = sizeof(shm_queue::Message);
             // Prepare arguments for execv
             char* args[] = {
                     const_cast<char*>("--region"),
@@ -51,7 +51,7 @@ int main(int argc, char *argv[])
             const std::string shm_key = commandLineArguments.find("shm_key")->second;
             const std::string video_repository = commandLineArguments.find("video_repository")->second;
 
-            int byte_size = sizeof(ipc_queue::Message);
+            int byte_size = sizeof(shm_queue::Message);
 
             char* args[] = {
                     const_cast<char*>("--region"),

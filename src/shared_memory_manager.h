@@ -106,7 +106,7 @@ public:
 
     bool IsLocked();
 
-    SharedMemoryInfo* GetMemoryMap(std::string name);
+    SharedMemoryInfo* GetMemoryMap(const std::string& name);
 
 private:
     // A map between the name and the details of the associated

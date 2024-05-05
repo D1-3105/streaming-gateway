@@ -14,13 +14,20 @@ namespace stream_daemon
     class HandleStreamDaemon {
     protected:
         const char* region_name_;
+        SharedMemoryManager* memoryManager_;
+        bool initialized_publisher_;
     public:
+        explicit HandleStreamDaemon(SharedMemoryManager* memManager,
+                           const char* region_name
+        ): memoryManager_(memManager), region_name_(region_name), initialized_publisher_(false) {}
         virtual void PutOnSHMQueue(void* iter_holder) = 0;
         virtual void ListenSHMQueue
                 (
-                        std::function<void*(const ipc_queue::Message *, size_t)> callback,
+                        std::function<void*(const shm_queue::Message *, size_t)> callback,
                         long long prefetch_count
                 ) = 0;
+
+        int GetSema();
     };
 }
 #endif //STREAMING_GATEWAY_CROW_HANDLESTREAMDAEMON_H

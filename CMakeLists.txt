@@ -11,8 +11,10 @@ find_package(Boost REQUIRED COMPONENTS system thread log)
 message(STATUS "Boost include dirs: ${Boost_INCLUDE_DIRS}")
 message(STATUS "Boost libraries: ${Boost_LIBRARIES}")
 
-# Opencv
+# Opencv with FFmpeg
 find_package(OpenCV REQUIRED)
+set(OpenCV_FIND_QUIETLY FALSE)
+set(WITH_GSTREAMER ON)
 message(STATUS "OpenCV version: ${OpenCV_VERSION}")
 message(STATUS "OpenCV libraries: ${OpenCV_LIBS}")
 
@@ -41,11 +43,15 @@ add_executable(streaming_gateway_crow src/main.cpp
         src/ipc_message_queue.h
         src/exporters.cpp
         src/exporters.h
+        src/constants.h
+        src/utils.h
+        src/utils.cpp
 )
 
 add_library(shared_memory_manager SHARED src/shared_memory_manager.cpp src/shared_memory_manager.h)
 
 add_executable(tests src/logging.h
+        src/HandleStreamDaemon.cpp
         src/shared_memory_manager.cpp
         src/ipc_message_queue.cpp
         qa/qa_main.cpp
@@ -56,6 +62,9 @@ add_executable(tests src/logging.h
         src/WebCam.cpp
         src/exporters.cpp
         src/exporters.h
+        src/constants.h
+        src/utils.h
+        src/utils.cpp
 )
 
 add_executable(
@@ -66,6 +75,9 @@ add_executable(
         src/ipc_message_queue.h
         src/WebCam.cpp
         src/cli.cpp
+        src/constants.h
+        src/utils.h
+        src/utils.cpp
 )
 
 add_executable(
@@ -80,6 +92,9 @@ add_executable(
         src/webcam_handler.cpp
         src/exporters.cpp
         src/exporters.h
+        src/constants.h
+        src/utils.h
+        src/utils.cpp
 )
 
 # flags for libs

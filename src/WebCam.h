@@ -20,6 +20,8 @@ namespace webcam{
         explicit WebcamIterator(int device = 0)
         {
             cap.open(device, cv::CAP_GSTREAMER);
+            double fps = cap.get(cv::CAP_PROP_FPS);
+            BOOST_LOG_TRIVIAL(info) << "Frequency of camera: " << fps;
         }
 
         ~WebcamIterator()
@@ -27,8 +29,9 @@ namespace webcam{
             cap.release();
         }
 
-        cv::Mat operator*()
+        cv::Mat matrix()
         {
+            size_t retries = 0;
             cv::Mat frame;
             while (true) {
                 cap >> frame;
@@ -36,6 +39,7 @@ namespace webcam{
                 {
                     break;
                 }
+                BOOST_LOG_TRIVIAL(info) << retries++;
                 cv::waitKey(1);
             }
             return frame;
@@ -51,6 +55,11 @@ namespace webcam{
             return cap.isOpened();
         }
 
+        double fps()
+        {
+            return cap.get(cv::CAP_PROP_FPS);
+        }
+
     private:
         cv::VideoCapture cap;
     };
@@ -59,8 +68,8 @@ namespace webcam{
     public:
         explicit WebCamStream(int device = 0) : begin_(device), end_() {}
 
-        WebcamIterator begin() const { return begin_; }
-        WebcamIterator end() const { return end_; }
+        [[nodiscard]] WebcamIterator begin() const { return begin_; }
+        [[nodiscard]] WebcamIterator end() const { return end_; }
     private:
         WebcamIterator begin_;
         WebcamIterator end_;
@@ -70,19 +79,16 @@ namespace webcam{
 namespace wc_daemon {
     class WebCamStreamDaemon : public stream_daemon::HandleStreamDaemon {
     private:
-        SharedMemoryManager* memoryManager;
         std::mutex mu_;
-    protected:
-        const char* region_name_;
     public:
         explicit WebCamStreamDaemon(
                 SharedMemoryManager* memManager,
                 const char* region_name
-        ): memoryManager(memManager), region_name_(region_name) {};
+        ): stream_daemon::HandleStreamDaemon(memManager, region_name) {};
         void PutOnSHMQueue(void* iter_holder) override;
         void ListenSHMQueue
                 (
-                        std::function<void*(const ipc_queue::Message *, size_t)> callback,
+                        std::function<void*(const shm_queue::Message *, size_t)> callback,
                         long long prefetch_count
                 ) override;
     };

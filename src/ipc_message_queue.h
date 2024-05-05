@@ -7,27 +7,62 @@
 #include <iostream>
 #include "shared_memory_manager.h"
 
-namespace ipc_queue
+namespace shm_queue
 {
-    struct QueueMetric {
-        unsigned long message_cnt;
-        unsigned long head_position;
-        unsigned long rear_position;
-
-        static ulong struct_size(){
-            return sizeof(ulong ) * 3;
+    class QueueException: public std::exception
+    {
+    public:
+        explicit QueueException(std::string  message) : msg_(std::move(message)) {}
+        [[nodiscard]] const char* what() const noexcept override {
+            return msg_.c_str();
         }
+    private:
+        std::string msg_;
     };
 
     struct Message {
         size_t dataLength;
+        void* nextMessageStart;
+        bool processed;
         u_char* data;
-        unsigned long nextMessageStart;
+
+        static void* GetPtrOnNextOnSHM(void* base_addr)
+        {
+            return (void*) ((ulong) base_addr + sizeof(bool) + sizeof(typeof Message::dataLength));
+        }
+
+        static void* GetPtrOnDataLengthOnSHM(void* base_addr)
+        {
+            return (void*) ((ulong) base_addr + sizeof(bool));
+        }
+
+        static void* GetPtrOnProcessedOnSHM(void* base_addr)
+        {
+            return base_addr;
+        }
+
+        static void* GetPtrOnDataOnSHM(void* base_addr)
+        {
+            void* tmp = Message::GetPtrOnNextOnSHM(base_addr);
+            return (void*) ((ulong) tmp + sizeof(ulong));
+        }
     };
-    ipc_queue::QueueMetric* GetQueueMetric(SharedMemoryManager& manager, const char* region_name);
+
+    struct QueueMetric {
+        size_t message_cnt;
+        void* head_position;
+        void* rear_position;
+
+        static ulong struct_size(){
+            return sizeof(size_t) + sizeof(void*) + sizeof(void*);
+        }
+    };
+
+
+    shm_queue::QueueMetric* GetQueueMetric(SharedMemoryManager& manager, const char* region_name);
     void InitializeQueue(SharedMemoryManager & manager, const char* region_name);
     void Enqueue(SharedMemoryManager& manager, Message *msg, const char* region_name);
-    ipc_queue::Message*  Deque(SharedMemoryManager& manager, const char* region_name);
+    shm_queue::Message*  Deque(SharedMemoryManager& manager, const char* region_name);
 }
 
 

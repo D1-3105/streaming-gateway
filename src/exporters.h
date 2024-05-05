@@ -12,9 +12,21 @@
 #include "regex"
 
 namespace exporters {
+
+    class ExporterException: public std::exception
+    {
+    public:
+        explicit ExporterException(std::string  message) : msg_(std::move(message)) {}
+        [[nodiscard]] const char* what() const noexcept override {
+            return msg_.c_str();
+        }
+    private:
+        std::string msg_;
+    };
+
     class BaseMessageHandler {
     protected:
-        virtual void* ExportPartial(const ipc_queue::Message* marshaled_frame_matrix_, long long cnt) = 0;
+        virtual void* ExportPartial(const shm_queue::Message* marshaled_frame_matrix_, long long cnt) = 0;
         stream_daemon::HandleStreamDaemon* daemon_fetcher_ = nullptr;
     public:
         BaseMessageHandler() = default;
@@ -24,7 +36,7 @@ namespace exporters {
 
 
     class HLSMessageHandler: public BaseMessageHandler {
-    private:
+    protected:
         const size_t frame_rate_;
     public:
         explicit HLSMessageHandler(stream_daemon::HandleStreamDaemon* daemonFetcher, const size_t frame_rate):
@@ -36,8 +48,8 @@ namespace exporters {
     class FileBaseHLSMessageHandler: public HLSMessageHandler {
     protected:
         const char* video_repository_;
-        void* ExportPartial(const ipc_queue::Message* marshaled_frame_matrix_, long long cnt);
-        static void unmarshalMessages(const ipc_queue::Message* marshaled_frame_matrix_, cv::Mat* output, long long cnt);
+        void* ExportPartial(const shm_queue::Message* marshaled_frame_matrix_, long long cnt) override;
+        static void unmarshalMessages(const shm_queue::Message* marshaled_frame_matrix_, cv::Mat* output, long long cnt);
 
         void CreateHLSVideoSegment(cv::Mat* frames, int cnt);
 

@@ -3,6 +3,7 @@
 //
 
 #include "exporters.h"
+#include "constants.h"
 
 [[noreturn]] void* exporters::HLSMessageHandler::HandleMessages() {
     while(true)
@@ -19,22 +20,37 @@
 }
 
 
-void *exporters::FileBaseHLSMessageHandler::ExportPartial(const ipc_queue::Message *marshaled_frame_matrix_,
+void *exporters::FileBaseHLSMessageHandler::ExportPartial(const shm_queue::Message *marshaled_frame_matrix,
                                                           long long int cnt)
 {
-    auto *frames = new cv::Mat[cnt];
-    unmarshalMessages(marshaled_frame_matrix_, frames, cnt);
-
+    size_t true_size = 0;
+    for(;true_size < cnt; true_size++)
+    {
+        if(marshaled_frame_matrix[true_size].data == nullptr)
+            break;
+    }
+    auto *frames = new cv::Mat[true_size];
+    unmarshalMessages(marshaled_frame_matrix, frames, (size_t) true_size);
+    CreateHLSVideoSegment(frames, true_size);
     return nullptr;
 }
 
-void exporters::FileBaseHLSMessageHandler::unmarshalMessages(const ipc_queue::Message *marshaled_frame_matrix_,
+void exporters::FileBaseHLSMessageHandler::unmarshalMessages(const shm_queue::Message *marshaled_frame_matrix_,
                                                              cv::Mat *output, long long cnt)
 {
+    int cols, rows, type;
+    size_t step;
+    size_t mat_content_offset = 3 * video_constants::int2uchar + video_constants::size_t2uchar;
     for(size_t i = 0; i < cnt; i++)
     {
         auto message = marshaled_frame_matrix_[i];
-        output[i] = *((cv::Mat*) message.data);
+        memcpy(&cols, message.data, sizeof(int));
+        memcpy(&rows, message.data + video_constants::int2uchar, sizeof(int));
+        memcpy(&type, message.data + video_constants::int2uchar * 2, sizeof(int));
+        memcpy(&step, message.data + video_constants::int2uchar * 3, sizeof(size_t));
+        auto* data = new uchar[message.dataLength - mat_content_offset];
+        memcpy(data, message.data + mat_content_offset, message.dataLength - mat_content_offset);
+        output[i] = cv::Mat(rows, cols, type, (void*)data, step);
     }
 }
 
@@ -60,22 +76,26 @@ void exporters::FileBaseHLSMessageHandler::CreateHLSVideoSegment(cv::Mat *frames
 {
     std::string playlistPath(std::string(video_repository_) + "/index.m3u8");
     int segmentNumber = readLastSegmentNumber(playlistPath) + 1;
-    std::string filename = "output" + std::to_string(segmentNumber) + ".ts";
+    std::string filename = "output" + std::to_string(segmentNumber) + ".mp4";
 
     cv::Size frameSize = frames[0].size();
-
-    cv::VideoWriter writer(
-            std::string(video_repository_) + "/" + filename,
-            cv::VideoWriter::fourcc('H', '2', '6', '4'),
-            30,
-            frameSize,
-            true
+    auto fn = std::string(video_repository_) + "/" + filename;
+    cv::VideoWriter writer;
+    writer.open(
+            fn,
+            cv::VideoWriter::fourcc('a', 'v', 'c', '1'),
+            (double) frame_rate_,
+            frameSize
     );
-
+    if(not writer.isOpened())
+        throw exporters::ExporterException("VideoWriter failed to open " + fn);
     for (int i = 0; i < cnt; ++i) {
+        if(frameSize != frames[i].size())
+        {
+            throw exporters::ExporterException("Invalid frame_size!");
+        }
         writer.write(frames[i]);
     }
-    writer.release();
 
     std::ofstream m3u8File(playlistPath, std::ios::app);
     m3u8File << "#EXTINF:10.0,\n" << filename << "\n";

@@ -374,11 +374,11 @@ SharedMemoryManager::SharedMemoryManager(SharedMemoryManager &manager) {
     }
 }
 
-SharedMemoryInfo* SharedMemoryManager::GetMemoryMap(std::string mem_name) {
+SharedMemoryInfo* SharedMemoryManager::GetMemoryMap(const std::string& mem_name) {
     auto it = shared_memory_map_.find(mem_name);
     if (it!= shared_memory_map_.end()) {
         return it->second.get();
     }
-    return nullptr;
+    throw std::runtime_error("Unregistered region name!");
 }
 

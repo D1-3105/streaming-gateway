@@ -99,20 +99,18 @@ private:
             RegisterSystemSharedMemory(manager, region_name, shm_key, offset, byte_size);
             assert(!MutexState(manager));
 
-            ipc_queue::InitializeQueue(*manager, region_name);
+            shm_queue::InitializeQueue(*manager, region_name);
 
             for (int i = 0; i < 5; ++i) {
-                auto* msg = new ipc_queue::Message;
-                msg->dataLength = 1;
+                auto* msg = new shm_queue::Message;
+                msg->dataLength = sizeof(int) / sizeof(u_char);
                 msg->data = new u_char[msg->dataLength];
                 *reinterpret_cast<int*>(msg->data) = i;
-                msg->nextMessageStart = 0;
-
-                ipc_queue::Enqueue(*manager, msg, region_name);
+                shm_queue::Enqueue(*manager, msg, region_name);
             }
             SharedMemoryManager another_manager(*manager);
             for (int i = 0; i < 5; ++i) {
-                auto* message = ipc_queue::Deque(another_manager, region_name);
+                auto* message = shm_queue::Deque(another_manager, region_name);
                 if (message != nullptr) {
                     assert(*message->data == i);
                     delete[] message->data;
@@ -121,6 +119,7 @@ private:
             }
             Unregister(manager, region_name);
         } catch (std::exception& e) {
+            BOOST_LOG_TRIVIAL(error) << e.what();
             throw e;
         }
         tearDown();
