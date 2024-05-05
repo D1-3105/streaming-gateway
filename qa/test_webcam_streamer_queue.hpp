@@ -138,7 +138,7 @@ private:
         sleep(2);
         pthread_cancel(listener_t);
         pthread_join(listener_t, nullptr);
-        TestWebcamStreamerQueue::publisherStatic(this);
+//        TestWebcamStreamerQueue::publisherStatic(this);
 //        BOOST_LOG_TRIVIAL(info) << "Metric after publisher: " <<
 //                                    shm_queue::GetQueueMetric(
 //                                            *manager,
