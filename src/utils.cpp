@@ -2,6 +2,8 @@
 // Created by oleg on 05.05.24.
 //
 #include "utils.h"
+#include <thread>
+#include <chrono>
 
 uint16_t crc16_table[256] = {0};
 
@@ -9,10 +11,8 @@ void utils::waitForSemaphoreValue(int sem_desc, int value)
 {
     int sem_value = semctl(sem_desc, 0, GETVAL);
     while (sem_value != value) {
-        struct sembuf sb = {0, 0, 0};
-        semop(sem_desc, &sb, 1);
-
         sem_value = semctl(sem_desc, 0, GETVAL);
+        std::this_thread::sleep_for(std::chrono::milliseconds(1));
     }
 }
 

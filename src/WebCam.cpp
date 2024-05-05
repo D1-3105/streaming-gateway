@@ -7,9 +7,6 @@
 #include "constants.h"
 #include "utils.h"
 
-pthread_cond_t cond = PTHREAD_COND_INITIALIZER;
-pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
-
 
 void wc_daemon::WebCamStreamDaemon::PutOnSHMQueue(void *iter_holder) {
     if (!initialized_publisher_) {
@@ -67,12 +64,10 @@ void wc_daemon::WebCamStreamDaemon::PutOnSHMQueue(void *iter_holder) {
 
 void* wait_for_messages(const ulong* value, void *arg)
 {
-    pthread_mutex_lock(&mutex);
     while (*value <= 0)
     {
-        pthread_cond_wait(&cond, &mutex);
+        std::this_thread::sleep_for(std::chrono::milliseconds(1));
     }
-    pthread_mutex_unlock(&mutex);
     return nullptr;
 }
 

@@ -132,17 +132,17 @@ private:
 
         RegisterSystemSharedMemory(manager, region_name.c_str(), shm_key, offset, byte_size);
 
-        /*pthread_create(&listener_t, nullptr, &TestWebcamStreamerQueue::listenerStatic, this);
+        pthread_create(&listener_t, nullptr, &TestWebcamStreamerQueue::listenerStatic, this);
         pthread_create(&publisher_t, nullptr, &TestWebcamStreamerQueue::publisherStatic, this);
         pthread_join(publisher_t, nullptr);
-        pthread_join(listener_t, nullptr);*/
+        pthread_join(listener_t, nullptr);
         TestWebcamStreamerQueue::publisherStatic(this);
-        BOOST_LOG_TRIVIAL(info) << "Metric after publisher: " <<
-                                    shm_queue::GetQueueMetric(
-                                            *manager,
-                                            region_name.c_str()
-                                    )->message_cnt;
-        TestWebcamStreamerQueue::listenerStatic(this);
+//        BOOST_LOG_TRIVIAL(info) << "Metric after publisher: " <<
+//                                    shm_queue::GetQueueMetric(
+//                                            *manager,
+//                                            region_name.c_str()
+//                                    )->message_cnt;
+//        TestWebcamStreamerQueue::listenerStatic(this);
         tearDown();
     }
 };
