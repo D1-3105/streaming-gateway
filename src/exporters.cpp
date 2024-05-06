@@ -57,7 +57,7 @@ void exporters::FileBaseHLSMessageHandler::unmarshalMessages(const shm_queue::Me
 int readLastSegmentNumber(const std::string& playlistPath) {
     std::ifstream m3u8File(playlistPath);
     std::string line;
-    std::regex tsRegex("output(\\d+)\\.mp4");
+    std::regex tsRegex("output(\\d+)\\.ts");
     int lastSegment = -1;
 
     if (m3u8File.is_open()) {
@@ -84,14 +84,14 @@ void exporters::FileBaseHLSMessageHandler::CreateHLSVideoSegment(cv::Mat *frames
 {
     std::string playlistPath(std::string(video_repository_) + "/index.m3u8");
     int segmentNumber = readLastSegmentNumber(playlistPath) + 1;
-    std::string filename = "output" + std::to_string(segmentNumber) + ".mp4";
+    std::string filename = "output" + std::to_string(segmentNumber) + ".ts";
 
     cv::Size frameSize = frames[0].size();
     auto fn = std::string(video_repository_) + "/" + filename;
     cv::VideoWriter writer;
     writer.open(
             fn,
-            cv::VideoWriter::fourcc('a', 'v', 'c', '1'),
+            cv::VideoWriter::fourcc('h', '2', '6', '4'),
             (double) frame_rate_,
             frameSize
     );

@@ -4,19 +4,22 @@
 #include "http.h"
 
 void* readPlaylist(
-        crow::response& resp, const std::string& playlistPath
+        crow::response& resp, const std::string& play
 )
 {
-    std::ifstream m3u8File(playlistPath);
-    if (!m3u8File.is_open()) {
+    std::ifstream fragment_or_playlist(play);
+    if (!fragment_or_playlist.is_open()) {
         resp.code = 404;
         return nullptr;
     }
 
     std::stringstream buffer;
-    buffer << m3u8File.rdbuf();
+    buffer << fragment_or_playlist.rdbuf();
     std::string playlistContent = buffer.str();
-    resp.set_header("Content-Type", "application/x-mpegURL");
+    if(play.ends_with("m3u8"))
+        resp.set_header("Content-Type", "application/x-mpegURL");
+    else
+        resp.set_header("Content-Type", "video/mp2t");
     resp.write(playlistContent);
 }
 
