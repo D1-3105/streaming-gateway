@@ -62,11 +62,19 @@ void wc_daemon::WebCamStreamDaemon::PutOnSHMQueue(void *iter_holder) {
     shm_queue::Enqueue(*memoryManager_, msg.get(), region_name_);
 }
 
-void* wait_for_messages(const ulong* value, void *arg)
+void* wait_for_messages(SharedMemoryManager& manager, const char* region_name)
 {
-    while (*value <= 0)
+    while(true)
     {
-        std::this_thread::sleep_for(std::chrono::milliseconds(1));
+        auto metric = shm_queue::GetQueueMetric(manager, region_name);
+        std::cout << "METRIC: " << metric->message_cnt << "; " << metric->head_position << std::endl;
+        if (metric->message_cnt) {
+            delete metric;
+            break;
+        } else {
+            delete metric;
+            std::this_thread::sleep_for(std::chrono::milliseconds(100));
+        }
     }
     return nullptr;
 }
@@ -92,12 +100,11 @@ void wc_daemon::WebCamStreamDaemon::ListenSHMQueue
     initialized_publisher_ = true;
 
     auto* message_buffer = new shm_queue::Message[prefetch_count];
-    auto metric = shm_queue::GetQueueMetric(*memoryManager_, region_name_);
     size_t prefetched = 0;
 
     for (size_t i = 0; i < prefetch_count; i++)
     {
-        wait_for_messages(&(metric->message_cnt), nullptr);
+        wait_for_messages(*memoryManager_, region_name_);
         try {
             message_buffer[i] = *shm_queue::Deque(*memoryManager_, region_name_);
             prefetched ++;
@@ -108,6 +115,3 @@ void wc_daemon::WebCamStreamDaemon::ListenSHMQueue
     }
     callback(message_buffer, prefetched);
 }
-
-
-

@@ -51,5 +51,6 @@ int main(int argc, char *argv[])
             10,
             video_repository.c_str()
     );
-    fb_hls_handler.HandleMessages();  // threads here
+    while (true)
+        fb_hls_handler.HandleMessages();  // threads here
 }

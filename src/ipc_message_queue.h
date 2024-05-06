@@ -68,9 +68,9 @@ namespace shm_queue
         static ulong struct_size(){
             return sizeof(size_t) + sizeof(void*) + sizeof(void*);
         }
+
+        void* DumpQueueMetric(void* base_addr);
     };
-
-
     shm_queue::QueueMetric* GetQueueMetric(SharedMemoryManager& manager, const char* region_name);
     void InitializeQueue(SharedMemoryManager & manager, const char* region_name);
     void Enqueue(SharedMemoryManager& manager, Message *msg, const char* region_name);
