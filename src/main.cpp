@@ -116,10 +116,15 @@ void main_server(const char* executed_with, const std::map<std::string, std::str
         );
 
         int port = 18081;
-        int* portPtr = &port;
 
         pthread_t httpServerThread;
-        pthread_create(&httpServerThread, nullptr, httpServer::serveApp, (void*)portPtr);
+        httpServer::ServerArguments args{video_repository, port};
+        pthread_create(
+                &httpServerThread,
+                nullptr,
+                httpServer::serveApp,
+                (void*)(&args)
+        );
 
         handler_process->join();
         streamer_process->join();

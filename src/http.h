@@ -8,7 +8,14 @@
 
 namespace httpServer
 {
-    crow::SimpleApp buildApp();
+    crow::SimpleApp buildApp(std::string& video_repository);
+
+    struct ServerArguments
+    {
+        std::string video_repository;
+        int port = 18081;
+    };
+
     void* serveApp(void* args);
 }
 

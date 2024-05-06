@@ -15,7 +15,7 @@
                     std::forward<decltype(PH2)>(PH2)
             );
         };
-        daemon_fetcher_->ListenSHMQueue(boundFunc, frame_rate_);
+        daemon_fetcher_->ListenSHMQueue(boundFunc, frame_rate_ * 3);
     }
 }
 
@@ -72,6 +72,14 @@ int readLastSegmentNumber(const std::string& playlistPath) {
     return lastSegment;
 }
 
+std::string BaseHlsString()
+{
+    return "#EXTM3U\n"
+           "#EXT-X-VERSION:3\n"
+           "#EXT-X-MEDIA-SEQUENCE:0\n";
+}
+
+
 void exporters::FileBaseHLSMessageHandler::CreateHLSVideoSegment(cv::Mat *frames, int cnt)
 {
     std::string playlistPath(std::string(video_repository_) + "/index.m3u8");
@@ -97,7 +105,12 @@ void exporters::FileBaseHLSMessageHandler::CreateHLSVideoSegment(cv::Mat *frames
         writer.write(frames[i]);
     }
 
+    double durationInSeconds = cnt / frame_rate_;
+
     std::ofstream m3u8File(playlistPath, std::ios::app);
-    m3u8File << "#EXTINF:10.0,\n" << filename << "\n";
+    if (m3u8File.tellp() == 0) {
+        m3u8File << BaseHlsString();
+    }
+    m3u8File << "#EXTINF:" << durationInSeconds << ",\n" << filename << "\n";
     m3u8File.close();
 }

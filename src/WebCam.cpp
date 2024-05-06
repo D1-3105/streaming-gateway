@@ -8,8 +8,10 @@
 #include "utils.h"
 
 
-void wc_daemon::WebCamStreamDaemon::PutOnSHMQueue(void *iter_holder) {
-    if (!initialized_publisher_) {
+void wc_daemon::WebCamStreamDaemon::PutOnSHMQueue(void *iter_holder)
+{
+    if (!initialized_publisher_)
+    {
         shm_queue::InitializeQueue(*memoryManager_, region_name_);
         int sema_desc = GetSema();
 
@@ -67,7 +69,6 @@ void* wait_for_messages(SharedMemoryManager& manager, const char* region_name)
     while(true)
     {
         auto metric = shm_queue::GetQueueMetric(manager, region_name);
-        std::cout << "METRIC: " << metric->message_cnt << "; " << metric->head_position << std::endl;
         if (metric->message_cnt) {
             delete metric;
             break;
@@ -110,7 +111,6 @@ void wc_daemon::WebCamStreamDaemon::ListenSHMQueue
             prefetched ++;
         } catch(shm_queue::QueueException& e) {
             BOOST_LOG_TRIVIAL(error) << e.what();
-            break;
         }
     }
     callback(message_buffer, prefetched);
