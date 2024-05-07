@@ -271,15 +271,6 @@ shm_queue::Deque(SharedMemoryManager& manager, const char* region_name)
             region_info->byte_size_ - QueueMetric::struct_size(),
             &queueStartAddress
     );
-    temp = Message::GetPtrOnProcessedOnSHM(head);
-    if (temp)
-    {
-        *((bool*) temp) = true;
-    }
-    else
-    {
-        throw QueueException("Message publish terminated!");
-    }
 
     if(queueStartAddress == nullptr)
     {
@@ -300,6 +291,15 @@ shm_queue::Deque(SharedMemoryManager& manager, const char* region_name)
     if (!msg->nextMessageStart)
     {
         throw QueueException("Message queue exceeded!");
+    }
+    temp = Message::GetPtrOnProcessedOnSHM(head);
+    if (temp)
+    {
+        *((bool*) temp) = true;
+    }
+    else
+    {
+        throw QueueException("Message publish terminated!");
     }
     metric->DumpQueueMetric(region_info->mapped_addr_);
     delete metric;

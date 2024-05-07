@@ -15,7 +15,7 @@
                     std::forward<decltype(PH2)>(PH2)
             );
         };
-        daemon_fetcher_->ListenSHMQueue(boundFunc, frame_rate_ * 3);
+        daemon_fetcher_->ListenSHMQueue(boundFunc, frame_rate_ * 1);
     }
 }
 

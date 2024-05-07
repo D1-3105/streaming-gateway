@@ -21,6 +21,7 @@ void* readPlaylist(
     else
         resp.set_header("Content-Type", "video/mp2t");
     resp.write(playlistContent);
+    return nullptr;
 }
 
 
@@ -41,6 +42,6 @@ void* httpServer::serveApp(void* args)
 {
     auto decoded = (ServerArguments*) args;
     auto app = buildApp(decoded->video_repository);
-    app.port(decoded->port).multithreaded().run();
+    app.port(decoded->port).run();
     return nullptr;
 }
