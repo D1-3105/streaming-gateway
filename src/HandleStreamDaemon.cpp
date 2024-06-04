@@ -52,3 +52,46 @@ void stream_daemon::HandleStreamDaemon::InitHandler() {
     }
     initialized_publisher_ = true;
 }
+
+
+void* wait_for_messages(SharedMemoryManager& manager, const char* region_name)
+{
+    while(true)
+    {
+        auto metric = shm_queue::GetQueueMetric(manager, region_name);
+        if (metric->message_cnt) {
+            delete metric;
+            break;
+        } else {
+            delete metric;
+            std::this_thread::sleep_for(std::chrono::milliseconds(100));
+        }
+    }
+    return nullptr;
+}
+
+void stream_daemon::HandleStreamDaemon::ListenSHMQueue
+        (
+                std::function<void*(const shm_queue::Message *, size_t)> callback,
+                long long prefetch_count
+        )
+{
+    std::lock_guard<std::mutex> guard(mu_);
+    InitHandler();
+
+    auto* message_buffer = new shm_queue::Message[prefetch_count];
+    size_t prefetched = 0;
+
+    for (size_t i = 0; i < prefetch_count; i++)
+    {
+        wait_for_messages(*memoryManager_, region_name_);
+        try {
+            message_buffer[i] = *shm_queue::Deque(*memoryManager_, region_name_);
+            prefetched ++;
+        } catch(shm_queue::QueueException& e) {
+            BOOST_LOG_TRIVIAL(error) << e.what();
+        }
+    }
+    callback(message_buffer, prefetched);
+}
+

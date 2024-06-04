@@ -82,6 +82,7 @@ add_executable(
 
 add_executable(
         tcp_streamer
+
         TCPStreamer/TCPStreamer.cpp
         TCPStreamer/TCPStreamer.h
         TCPStreamer/main.cpp
@@ -121,6 +122,8 @@ target_compile_options(tests PUBLIC -g)
 
 target_link_options(video_handler PUBLIC -g)
 target_compile_options(video_handler PUBLIC -g)
+
+target_compile_options(tcp_streamer PUBLIC -g)
 
 # linking
 target_link_libraries(streaming_gateway_crow ${Boost_LIBRARIES} ${OpenCV_LIBS} -lrt -lpthread)

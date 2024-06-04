@@ -78,19 +78,12 @@ namespace webcam{
 
 namespace wc_daemon {
     class WebCamStreamDaemon : public stream_daemon::HandleStreamDaemon {
-    private:
-        std::mutex mu_;
     public:
         explicit WebCamStreamDaemon(
                 SharedMemoryManager* memManager,
                 const char* region_name
         ): stream_daemon::HandleStreamDaemon(memManager, region_name) {};
         void PutOnSHMQueue(void* iter_holder) override;
-        void ListenSHMQueue
-                (
-                        std::function<void*(const shm_queue::Message *, size_t)> callback,
-                        long long prefetch_count
-                ) override;
     };
 };
 
