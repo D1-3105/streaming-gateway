@@ -16,6 +16,9 @@ namespace stream_daemon
         const char* region_name_;
         SharedMemoryManager* memoryManager_;
         bool initialized_publisher_;
+
+        void InitStreaming();
+        void InitHandler();
     public:
         explicit HandleStreamDaemon(SharedMemoryManager* memManager,
                            const char* region_name

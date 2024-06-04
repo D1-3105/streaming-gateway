@@ -47,7 +47,8 @@ add_executable(streaming_gateway_crow src/main.cpp
         src/utils.cpp
 )
 
-add_library(shared_memory_manager SHARED src/shared_memory_manager.cpp src/shared_memory_manager.h)
+add_library(shared_memory_manager SHARED src/shared_memory_manager.cpp src/shared_memory_manager.h
+)
 
 add_executable(tests src/logging.h
         src/HandleStreamDaemon.cpp
@@ -73,6 +74,20 @@ add_executable(
         src/ipc_message_queue.cpp
         src/ipc_message_queue.h
         src/WebCam.cpp
+        src/cli.cpp
+        src/constants.h
+        src/utils.h
+        src/utils.cpp
+)
+
+add_executable(
+        tcp_streamer
+        TCPStreamer/TCPStreamer.cpp
+        TCPStreamer/TCPStreamer.h
+        TCPStreamer/main.cpp
+
+        src/HandleStreamDaemon.cpp
+        src/ipc_message_queue.cpp
         src/cli.cpp
         src/constants.h
         src/utils.h
@@ -114,3 +129,5 @@ target_link_libraries(tests shared_memory_manager ${Boost_LIBRARIES} ${OpenCV_LI
 target_link_libraries(video_streamer shared_memory_manager ${OpenCV_LIBS} ${Boost_LIBRARIES} Boost::log -lrt -lpthread)
 
 target_link_libraries(video_handler shared_memory_manager ${OpenCV_LIBS} ${Boost_LIBRARIES} Boost::log -lrt -lpthread)
+
+target_link_libraries(tcp_streamer shared_memory_manager ${OpenCV_LIBS} ${Boost_LIBRARIES} Boost::log -lrt -lpthread)
