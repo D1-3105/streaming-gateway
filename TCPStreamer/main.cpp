@@ -1,13 +1,10 @@
 //
-// Created by oleg on 22.04.24.
+// Created by oleg on 04.06.24.
 //
+#include "TCPStreamer.h"
+#include "../src/cli.h"
 
-#include "WebCam.h"
-#include "cli.h"
-
-#include "shared_memory_manager.h"
-#include "logging.h"
-#include "wc_daemon.h"
+#include "../src/logging.h"
 
 #include <iostream>
 #include <csignal>
@@ -25,15 +22,15 @@ void dieHandler( int signum ) {
 }
 
 struct PuttingThreadArgs {
-    wc_daemon::WebCamStreamDaemon* wc_d;
-    webcam::WebcamIterator* stream_iterator;
+    tcp_streamer::TCPStreamer* streamer;
+    tcp_stream::TCPMessageStream* stream_iterator;
 };
 
 
 [[noreturn]] void* putter(void* args_ptr) {
     PuttingThreadArgs* args = static_cast<PuttingThreadArgs*>(args_ptr);
-    wc_daemon::WebCamStreamDaemon& wc_d = *(args->wc_d);
-    webcam::WebcamIterator& stream_iterator = *(args->stream_iterator);
+    tcp_streamer::TCPStreamer& wc_d = *(args->streamer);
+    tcp_stream::TCPMessageStream& stream_iterator = *(args->stream_iterator);
 
     while (true) {
         wc_d.PutOnSHMQueue(&stream_iterator);
@@ -60,10 +57,10 @@ int main(int argc, char *argv[]) {
     signal(SIGINT, dieHandler);
     signal(SIGTERM, dieHandler);
 
-    wc_daemon::WebCamStreamDaemon wc_d(shared_manager, region.c_str());
-    webcam::WebcamIterator stream_iterator;
+    tcp_streamer::TCPStreamer streamer(shared_manager, region.c_str());
+    tcp_stream::TCPMessageStream stream_iterator(6301);
 
-    PuttingThreadArgs thread_args = {&wc_d, &stream_iterator};
+    PuttingThreadArgs thread_args = {&streamer, &stream_iterator};
     pthread_t putting_thread;
     pthread_create(&putting_thread, nullptr, putter, &thread_args);
     pthread_join(putting_thread, nullptr);

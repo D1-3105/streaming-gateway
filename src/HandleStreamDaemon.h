@@ -13,9 +13,13 @@ namespace stream_daemon
 {
     class HandleStreamDaemon {
     protected:
+        std::mutex mu_;
         const char* region_name_;
         SharedMemoryManager* memoryManager_;
         bool initialized_publisher_;
+
+        void InitStreaming();
+        void InitHandler();
     public:
         explicit HandleStreamDaemon(SharedMemoryManager* memManager,
                            const char* region_name
@@ -25,7 +29,7 @@ namespace stream_daemon
                 (
                         std::function<void*(const shm_queue::Message *, size_t)> callback,
                         long long prefetch_count
-                ) = 0;
+                );
 
         int GetSema();
     };

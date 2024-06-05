@@ -8,6 +8,7 @@
 #include "shared_memory_manager.h"
 #include "WebCam.h"
 #include "exporters.h"
+#include "wc_daemon.h"
 
 auto shared_manager = new SharedMemoryManager;
 std::string region;

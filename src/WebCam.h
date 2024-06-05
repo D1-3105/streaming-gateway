@@ -6,12 +6,9 @@
 #define STREAMINGGATEWAYCROW_WEBCAM_H
 
 #include <boost/log/trivial.hpp>
-#include "HandleStreamDaemon.h"
-#include <pthread.h>
 #include "mutex"
 
 #include "opencv2/opencv.hpp"
-#include "shared_memory_manager.h"
 
 namespace webcam{
 
@@ -66,31 +63,11 @@ namespace webcam{
 
     class WebCamStream{
     public:
-        explicit WebCamStream(int device = 0) : begin_(device), end_() {}
+        explicit WebCamStream(int device = 0) : begin_(device) {}
 
         [[nodiscard]] WebcamIterator begin() const { return begin_; }
-        [[nodiscard]] WebcamIterator end() const { return end_; }
     private:
         WebcamIterator begin_;
-        WebcamIterator end_;
-    };
-};
-
-namespace wc_daemon {
-    class WebCamStreamDaemon : public stream_daemon::HandleStreamDaemon {
-    private:
-        std::mutex mu_;
-    public:
-        explicit WebCamStreamDaemon(
-                SharedMemoryManager* memManager,
-                const char* region_name
-        ): stream_daemon::HandleStreamDaemon(memManager, region_name) {};
-        void PutOnSHMQueue(void* iter_holder) override;
-        void ListenSHMQueue
-                (
-                        std::function<void*(const shm_queue::Message *, size_t)> callback,
-                        long long prefetch_count
-                ) override;
     };
 };
 

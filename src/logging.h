@@ -13,13 +13,7 @@
 
 namespace logging
 {
-    void init_logging(boost::log::trivial::severity_level level = boost::log::trivial::info)
-    {
-        boost::log::add_console_log(std::cout);
-        boost::log::core::get()->set_filter(
-                boost::log::trivial::severity >= level
-        );
-    }
+    void init_logging(boost::log::trivial::severity_level level = boost::log::trivial::info);
 }
 
 
