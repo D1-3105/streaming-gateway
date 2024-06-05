@@ -35,6 +35,7 @@ add_definitions(-DASIO_DISABLE_BOOST_REGEX)
 add_executable(streaming_gateway_crow src/main.cpp
         src/cli.cpp
         src/http.cpp
+        src/logging.cpp
         src/logging.h
         src/shared_memory_manager.cpp
         src/shared_memory_manager.h
@@ -50,7 +51,8 @@ add_executable(streaming_gateway_crow src/main.cpp
 add_library(shared_memory_manager SHARED src/shared_memory_manager.cpp src/shared_memory_manager.h
 )
 
-add_executable(tests src/logging.h
+add_executable(tests src/logging.cpp
+        src/logging.h
         src/HandleStreamDaemon.cpp
         src/shared_memory_manager.cpp
         src/ipc_message_queue.cpp
@@ -65,6 +67,8 @@ add_executable(tests src/logging.h
         src/constants.h
         src/utils.h
         src/utils.cpp
+        src/wc_daemon.cpp
+        src/wc_daemon.h
 )
 
 add_executable(
@@ -78,6 +82,8 @@ add_executable(
         src/constants.h
         src/utils.h
         src/utils.cpp
+        src/wc_daemon.cpp
+        src/wc_daemon.h
 )
 
 add_executable(
@@ -86,6 +92,11 @@ add_executable(
         TCPStreamer/TCPStreamer.cpp
         TCPStreamer/TCPStreamer.h
         TCPStreamer/main.cpp
+
+        src/logging.cpp
+        src/logging.h
+        src/wc_daemon.cpp
+        src/wc_daemon.h
 
         src/HandleStreamDaemon.cpp
         src/ipc_message_queue.cpp
@@ -101,6 +112,11 @@ add_executable(
         src/WebCam.cpp
         src/WebCam.h
 
+        src/wc_daemon.cpp
+        src/wc_daemon.h
+        src/logging.cpp
+        src/logging.h
+
         src/ipc_message_queue.cpp
         src/ipc_message_queue.h
         src/cli.cpp
@@ -110,6 +126,21 @@ add_executable(
         src/constants.h
         src/utils.h
         src/utils.cpp
+)
+
+add_executable(
+        tcp_producer
+
+        src/WebCam.cpp
+        src/WebCam.h
+        src/logging.cpp
+        src/logging.h
+        src/constants.h
+
+        TCPStreamer/tcp_producing.cpp
+        TCPStreamer/tcp_producing.h
+        TCPStreamer/TCPPublisher.h
+        TCPStreamer/tcp_frame_producer_main.cpp
 )
 
 # flags for libs
@@ -134,3 +165,4 @@ target_link_libraries(video_streamer shared_memory_manager ${OpenCV_LIBS} ${Boos
 target_link_libraries(video_handler shared_memory_manager ${OpenCV_LIBS} ${Boost_LIBRARIES} Boost::log -lrt -lpthread)
 
 target_link_libraries(tcp_streamer shared_memory_manager ${OpenCV_LIBS} ${Boost_LIBRARIES} Boost::log -lrt -lpthread)
+target_link_libraries(tcp_producer shared_memory_manager ${OpenCV_LIBS} ${Boost_LIBRARIES} Boost::log -lrt -lpthread)

@@ -3,7 +3,7 @@
 //
 #include "TCPStreamer.h"
 #include "../src/cli.h"
-#include "../src/shared_memory_manager.h"
+
 #include "../src/logging.h"
 
 #include <iostream>
@@ -58,8 +58,7 @@ int main(int argc, char *argv[]) {
     signal(SIGTERM, dieHandler);
 
     tcp_streamer::TCPStreamer streamer(shared_manager, region.c_str());
-    std::string host = getenv("PRODUCER_HOST");
-    tcp_stream::TCPMessageStream stream_iterator(host, 6301);
+    tcp_stream::TCPMessageStream stream_iterator(6301);
 
     PuttingThreadArgs thread_args = {&streamer, &stream_iterator};
     pthread_t putting_thread;

@@ -7,6 +7,7 @@
 
 #include "shared_memory_manager.h"
 #include "logging.h"
+#include "wc_daemon.h"
 
 #include <iostream>
 #include <csignal>

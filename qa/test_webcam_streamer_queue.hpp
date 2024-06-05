@@ -20,6 +20,7 @@
 #include "../src/exporters.h"
 
 #include "../src/ipc_message_queue.h"
+#include "../src/wc_daemon.h"
 
 class TestWebcamStreamerQueue: public BaseTest {
 public:
