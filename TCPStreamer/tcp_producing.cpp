@@ -3,7 +3,7 @@
 //
 
 #include "tcp_producing.h"
-
+#include "zlib.h"
 #include "../src/constants.h"
 
 void TCPFrameProducer::HandleWebcamFrame() {
@@ -39,19 +39,45 @@ void TCPFrameProducer::HandleWebcamFrame() {
     // Copy the matrix data
     memcpy(initial + offset, mat.data, data_bytes);
 
-    // Publish the message
-    if (!publisher_->publish(tcp_message)) {
-        BOOST_LOG_TRIVIAL(error) << ("Failed to publish TCP message");
+    // Compress the tcp_message using gzip if enabled
+    if (enable_gzip_) {
+        auto decompressed_size = tcp_message.size();
+        uLongf compressed_size = compressBound(decompressed_size);
+        std::vector<uchar> compressed_message(compressed_size);
+
+        int result = compress(compressed_message.data(), &compressed_size, tcp_message.data(), tcp_message.size());
+        if (result != Z_OK) {
+            BOOST_LOG_TRIVIAL(error) << ("Failed to compress TCP message");
+            return;
+        }
+
+        // Resize the vector to the actual compressed size
+        compressed_message.resize(compressed_size);
+
+        // Serialize the decompressed size
+        auto* decompressed_size_serialized = reinterpret_cast<unsigned char*>(&decompressed_size);
+        compressed_message.insert(compressed_message.begin(), decompressed_size_serialized, decompressed_size_serialized + sizeof(decompressed_size));
+
+        // Publish the compressed message
+        if (!publisher_->publish(compressed_message)) {
+            BOOST_LOG_TRIVIAL(error) << ("Failed to publish compressed TCP message");
+        }
+    } else {
+        // Publish the uncompressed message
+        if (!publisher_->publish(tcp_message)) {
+            BOOST_LOG_TRIVIAL(error) << ("Failed to publish TCP message");
+        }
     }
 
     // Release the matrix
     mat.release();
 }
 
-TCPFrameProducer::TCPFrameProducer(std::string& host, short port, short stream_device) {
+TCPFrameProducer::TCPFrameProducer(std::string& host, short port, short stream_device, bool enable_gzip) {
     publisher_ = new TCPPublisher();
     publisher_->init_socket(host, port);
     iterator_ = new webcam::WebCamStream(stream_device);
+    enable_gzip_ = enable_gzip;
 }
 
 [[noreturn]] void TCPFrameProducer::Run() {

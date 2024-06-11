@@ -56,8 +56,12 @@ int main(int argc, char *argv[]) {
     shared_manager->RegisterSystemSharedMemory(region, shm_key, 0, byte_size);
     signal(SIGINT, dieHandler);
     signal(SIGTERM, dieHandler);
-
-    tcp_streamer::TCPStreamer streamer(shared_manager, region.c_str());
+    bool enable_gzip = false;
+    const char* gzip_env = getenv("GZIP");
+    if (gzip_env != nullptr) {
+        enable_gzip = std::strcmp(gzip_env, "true") == 0;
+    }
+    tcp_streamer::TCPStreamer streamer(shared_manager, region.c_str(), enable_gzip);
     tcp_stream::TCPMessageStream stream_iterator(6301);
 
     PuttingThreadArgs thread_args = {&streamer, &stream_iterator};

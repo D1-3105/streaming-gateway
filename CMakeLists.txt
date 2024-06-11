@@ -164,5 +164,7 @@ target_link_libraries(video_streamer shared_memory_manager ${OpenCV_LIBS} ${Boos
 
 target_link_libraries(video_handler shared_memory_manager ${OpenCV_LIBS} ${Boost_LIBRARIES} Boost::log -lrt -lpthread)
 
-target_link_libraries(tcp_streamer shared_memory_manager ${OpenCV_LIBS} ${Boost_LIBRARIES} Boost::log -lrt -lpthread)
-target_link_libraries(tcp_producer shared_memory_manager ${OpenCV_LIBS} ${Boost_LIBRARIES} Boost::log -lrt -lpthread)
+
+find_package(ZLIB REQUIRED)
+target_link_libraries(tcp_streamer shared_memory_manager ${OpenCV_LIBS} ${Boost_LIBRARIES} Boost::log ${ZLIB_LIBRARIES} -lrt -lpthread)
+target_link_libraries(tcp_producer shared_memory_manager ${OpenCV_LIBS} ${Boost_LIBRARIES} Boost::log ${ZLIB_LIBRARIES} -lrt -lpthread)

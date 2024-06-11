@@ -74,8 +74,6 @@ public:
             }
             total_bytes_sent += bytes_sent;
             std::cerr << "Sent bytes: " << bytes_sent << ", Total sent: " << total_bytes_sent << " of " << message_size << std::endl;
-            // Add a small delay to prevent overwhelming the receiver
-            usleep(3000); // Sleep for 3ms
         }
 
         return true;

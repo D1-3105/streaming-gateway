@@ -192,9 +192,12 @@ namespace tcp_streamer {
     public:
         explicit TCPStreamer(
                 SharedMemoryManager* memManager,
-        const char* region_name
-        ): stream_daemon::HandleStreamDaemon(memManager, region_name) {};
+                const char* region_name,
+                bool enable_gzip
+        ): stream_daemon::HandleStreamDaemon(memManager, region_name), enable_gzip_(enable_gzip) {};
         void PutOnSHMQueue(void* iter_holder) override;
+    private:
+        bool enable_gzip_;
     };
 }
 
