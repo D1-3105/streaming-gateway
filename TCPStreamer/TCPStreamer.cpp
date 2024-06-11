@@ -20,6 +20,9 @@ void tcp_streamer::TCPStreamer::PutOnSHMQueue(void *iter_holder) {
     auto stream = static_cast<tcp_stream::TCPMessageStream*>(iter_holder);
     BOOST_LOG_TRIVIAL(info) << "stream->begin().new_message() call";
     auto tcp_msg = stream->begin().new_message();
+    size_t packet_num = *(size_t*) tcp_msg.data();
+    tcp_msg.erase(tcp_msg.begin(), tcp_msg.begin() + sizeof(size_t));
+    BOOST_LOG_TRIVIAL(info) << packet_num << " received at " << std::chrono::system_clock::now().time_since_epoch().count();
     BOOST_LOG_TRIVIAL(info) << "stream->begin().new_message() done";
 
     if (tcp_msg.empty()) {
@@ -61,6 +64,7 @@ void tcp_streamer::TCPStreamer::PutOnSHMQueue(void *iter_holder) {
     msg->dataLength = received_decomp.size();
 
     shm_queue::Enqueue(*memoryManager_, msg.get(), region_name_);
+    BOOST_LOG_TRIVIAL(info) << packet_num << " Enqueue at " << std::chrono::system_clock::now().time_since_epoch().count();
     BOOST_LOG_TRIVIAL(info) << "shm_queue::Enqueue done";
 
     // Clean up the allocated memory

@@ -6,6 +6,9 @@
 #include "zlib.h"
 #include "../src/constants.h"
 
+size_t packet_num = 0;
+
+
 void TCPFrameProducer::HandleWebcamFrame() {
     cv::Mat mat = iterator_->begin().matrix();
     if (mat.empty()) {
@@ -55,20 +58,30 @@ void TCPFrameProducer::HandleWebcamFrame() {
         compressed_message.resize(compressed_size);
 
         // Serialize the decompressed size
+
         auto* decompressed_size_serialized = reinterpret_cast<unsigned char*>(&decompressed_size);
         compressed_message.insert(compressed_message.begin(), decompressed_size_serialized, decompressed_size_serialized + sizeof(decompressed_size));
+
+
+        auto* packet_num_sr = (u_char*) &packet_num;
+        compressed_message.insert(compressed_message.begin(), packet_num_sr, packet_num_sr+sizeof(size_t));
+
+        BOOST_LOG_TRIVIAL(info) << packet_num << " sent at " << std::chrono::system_clock::now().time_since_epoch().count();
 
         // Publish the compressed message
         if (!publisher_->publish(compressed_message)) {
             BOOST_LOG_TRIVIAL(error) << ("Failed to publish compressed TCP message");
         }
     } else {
+        BOOST_LOG_TRIVIAL(info) << packet_num << " sent at " << std::chrono::system_clock::now().time_since_epoch().count();
+        auto* packet_num_sr = (u_char*) &packet_num;
+        tcp_message.insert(tcp_message.begin(), packet_num_sr, packet_num_sr+sizeof(size_t));
         // Publish the uncompressed message
         if (!publisher_->publish(tcp_message)) {
             BOOST_LOG_TRIVIAL(error) << ("Failed to publish TCP message");
         }
     }
-
+    packet_num++;
     // Release the matrix
     mat.release();
 }
