@@ -258,42 +258,6 @@ nullptr_t SharedMemoryManager::GetMemoryInfo(
     return nullptr;
 }
 
-
-nullptr_t
-SharedMemoryManager::GetStatus(const std::string &name, rapidjson::Document *shm_status)
-{
-    BOOST_LOG_TRIVIAL(debug) << "GetStatus - lock acquire, " << MutexState(this);
-    SharedLockGuard<std::mutex> guard(mu_);
-
-    if (name.empty()) {
-        for (const auto& shm_info : shared_memory_map_) {
-            rapidjson::Document::AllocatorType& allocator = shm_status->GetAllocator();
-            rapidjson::Value shm_region(rapidjson::kObjectType);
-            shm_region.AddMember("name", rapidjson::Value(shm_info.first.c_str(), allocator), allocator);
-            shm_region.AddMember("key", rapidjson::Value(shm_info.second->shm_key_.c_str(), allocator), allocator);
-            shm_region.AddMember("offset", shm_info.second->offset_, allocator);
-            shm_region.AddMember("byte_size", shm_info.second->byte_size_, allocator);
-            shm_status->PushBack(shm_region, allocator);
-        }
-    } else {
-        auto it = shared_memory_map_.find(name);
-        if (it == shared_memory_map_.end()) {
-            BOOST_LOG_TRIVIAL(error) << "Unable to find system shared memory region";
-            throw SharedMemoryException("Unable to find system shared memory region");
-        }
-
-        rapidjson::Document::AllocatorType& allocator = shm_status->GetAllocator();
-        rapidjson::Value shm_region(rapidjson::kObjectType);
-        shm_region.AddMember("name", rapidjson::Value(it->second->name_.c_str(), allocator), allocator);
-        shm_region.AddMember("key", rapidjson::Value(it->second->shm_key_.c_str(), allocator), allocator);
-        shm_region.AddMember("offset", it->second->offset_, allocator);
-        shm_region.AddMember("byte_size", it->second->byte_size_, allocator);
-        shm_status->PushBack(shm_region, allocator);
-    }
-
-    return nullptr; // success
-}
-
 nullptr_t
 SharedMemoryManager::Unregister(const std::string &name) {
     // Serialize all operations that write/read current shared memory regions

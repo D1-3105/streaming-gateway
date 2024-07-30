@@ -17,11 +17,7 @@
 #include <sys/stat.h>
 #include <unistd.h>
 
-#include "rapidjson/writer.h"
-#include "rapidjson/reader.h"
-
 #include <thread>
-#include <rapidjson/document.h>
 
 #include <boost/log/core.hpp>
 #include <boost/log/trivial.hpp>
@@ -93,9 +89,6 @@ public:
     nullptr_t GetMemoryInfo(
             const std::string& name, size_t offset, size_t byte_size,
             void** shm_mapped_addr);
-
-    nullptr_t GetStatus(
-            const std::string &name, rapidjson::Document *shm_status);
 
     nullptr_t Unregister(
             const std::string& name);
