@@ -7,7 +7,10 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g")
 set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -lc")
 
 # Boost linking
-find_package(Boost REQUIRED COMPONENTS system thread log)
+find_package(
+        Boost REQUIRED COMPONENTS
+        system thread log
+)
 message(STATUS "Boost include dirs: ${Boost_INCLUDE_DIRS}")
 message(STATUS "Boost libraries: ${Boost_LIBRARIES}")
 
@@ -84,6 +87,8 @@ add_executable(
         src/utils.cpp
         src/wc_daemon.cpp
         src/wc_daemon.h
+        src/logging.h
+        src/logging.cpp
 )
 
 add_executable(
@@ -157,14 +162,14 @@ target_compile_options(video_handler PUBLIC -g)
 target_compile_options(tcp_streamer PUBLIC -g)
 
 # linking
-target_link_libraries(streaming_gateway_crow ${Boost_LIBRARIES} ${OpenCV_LIBS} -lrt -lpthread)
-target_link_libraries(shared_memory_manager ${Boost_LIBRARIES} Boost::log -lpthread)
-target_link_libraries(tests shared_memory_manager ${Boost_LIBRARIES} ${OpenCV_LIBS} Boost::log -lrt -lpthread)
-target_link_libraries(video_streamer shared_memory_manager ${OpenCV_LIBS} ${Boost_LIBRARIES} Boost::log -lrt -lpthread)
+target_link_libraries(streaming_gateway_crow ${Boost_LIBRARIES} ${OpenCV_LIBS} Boost::log -lrt -lpthread -ldl)
+target_link_libraries(shared_memory_manager ${Boost_LIBRARIES} Boost::log -lpthread -ldl)
+target_link_libraries(tests shared_memory_manager ${Boost_LIBRARIES} ${OpenCV_LIBS} Boost::log -lrt -lpthread -ldl)
+target_link_libraries(video_streamer shared_memory_manager ${OpenCV_LIBS} ${Boost_LIBRARIES} Boost::log -lrt -lpthread -ldl)
 
-target_link_libraries(video_handler shared_memory_manager ${OpenCV_LIBS} ${Boost_LIBRARIES} Boost::log -lrt -lpthread)
+target_link_libraries(video_handler shared_memory_manager ${OpenCV_LIBS} ${Boost_LIBRARIES} Boost::log -lrt -lpthread -ldl)
 
 
 find_package(ZLIB REQUIRED)
-target_link_libraries(tcp_streamer shared_memory_manager ${OpenCV_LIBS} ${Boost_LIBRARIES} Boost::log ${ZLIB_LIBRARIES} -lrt -lpthread)
-target_link_libraries(tcp_producer shared_memory_manager ${OpenCV_LIBS} ${Boost_LIBRARIES} Boost::log ${ZLIB_LIBRARIES} -lrt -lpthread)
+target_link_libraries(tcp_streamer shared_memory_manager ${OpenCV_LIBS} ${Boost_LIBRARIES} Boost::log ${ZLIB_LIBRARIES} -lrt -lpthread -ldl)
+target_link_libraries(tcp_producer shared_memory_manager ${OpenCV_LIBS} ${Boost_LIBRARIES} Boost::log ${ZLIB_LIBRARIES} -lrt -lpthread -ldl)

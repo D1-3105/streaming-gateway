@@ -6,6 +6,9 @@
 #define STREAMINGGATEWAYCROW_IPC_MESSAGE_QUEUE_H
 #include <iostream>
 #include "shared_memory_manager.h"
+#include "logging.h"
+#include <boost/stacktrace.hpp>
+#include "atomic"
 
 namespace shm_queue
 {
@@ -23,17 +26,17 @@ namespace shm_queue
     struct Message {
         size_t dataLength;
         void* nextMessageStart;
-        bool processed;
+        std::atomic_bool* processed;
         u_char* data;
 
         static void* GetPtrOnNextOnSHM(void* base_addr)
         {
-            return (void*) ((ulong) base_addr + sizeof(bool) + sizeof(typeof Message::dataLength));
+            return (void*) ((ulong) base_addr + sizeof(std::atomic_bool) + sizeof(typeof Message::dataLength));
         }
 
         static void* GetPtrOnDataLengthOnSHM(void* base_addr)
         {
-            return (void*) ((ulong) base_addr + sizeof(bool));
+            return (void*) ((ulong) base_addr + sizeof(std::atomic_bool));
         }
 
         static void* GetPtrOnProcessedOnSHM(void* base_addr)
@@ -49,27 +52,48 @@ namespace shm_queue
 
         [[nodiscard]] size_t MessageSizeOnSHM() const
         {
-            size_t message_size = sizeof(size_t) + dataLength * sizeof(u_char) + sizeof(void*) + sizeof(bool);
+            size_t message_size = sizeof(size_t) + dataLength * sizeof(u_char) + sizeof(void*) + sizeof(std::atomic_bool);
             return message_size;
         }
 
         static size_t MessageSizeWithoutDataOnSHM()
         {
-            size_t message_size = sizeof(size_t) + sizeof(void*) + sizeof(bool);
+            size_t message_size = sizeof(size_t) + sizeof(void*) + sizeof(std::atomic_bool);
             return message_size;
         }
     };
 
     struct QueueMetric {
-        size_t message_cnt;
-        void* head_position;
-        void* rear_position;
+        std::atomic_flag locked;
+        std::atomic_size_t message_cnt;
+        std::atomic_ulong head_position;
+        std::atomic_ulong rear_position;
 
-        static ulong struct_size(){
-            return sizeof(size_t) + sizeof(void*) + sizeof(void*);
+        void Acquire() {
+            while(std::atomic_flag_test_and_set_explicit(&locked, std::memory_order_acquire));
+        };
+
+        void Unlock() {
+            std::atomic_flag_clear_explicit(&locked, std::memory_order_release);
         }
 
-        void* DumpQueueMetric(void* base_addr);
+        void* head_pos_local() {
+            return (void*) (ulong(this) + this->head_position.load());
+        }
+
+        void* rear_pos_local() {
+            if (not this->rear_position)
+                return nullptr;
+            return (void*) (ulong(this) + this->rear_position.load());
+        }
+
+        void SetRear(void* base_addr) {
+            this->rear_position.exchange(ulong(base_addr) - ulong(this));
+        }
+
+        void SetHead(void* base_addr) {
+            this->head_position.exchange(ulong(base_addr) - ulong(this));
+        }
     };
     shm_queue::QueueMetric* GetQueueMetric(SharedMemoryManager& manager, const char* region_name);
     void InitializeQueue(SharedMemoryManager & manager, const char* region_name);

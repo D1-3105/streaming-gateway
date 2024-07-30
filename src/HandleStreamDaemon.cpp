@@ -56,14 +56,12 @@ void stream_daemon::HandleStreamDaemon::InitHandler() {
 
 void* wait_for_messages(SharedMemoryManager& manager, const char* region_name)
 {
+    const auto metric = shm_queue::GetQueueMetric(manager, region_name);
     while(true)
     {
-        auto metric = shm_queue::GetQueueMetric(manager, region_name);
-        if (metric->message_cnt) {
-            delete metric;
+        if (metric->message_cnt.load(std::memory_order_relaxed)) {
             break;
         } else {
-            delete metric;
             std::this_thread::sleep_for(std::chrono::milliseconds(100));
         }
     }

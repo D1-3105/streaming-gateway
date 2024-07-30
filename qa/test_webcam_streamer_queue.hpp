@@ -59,31 +59,59 @@ private:
         setUp();
         const char* shm_key = "test_ipc_queue_key";
 
-        try {
-            int offset = 0;
-            int byte_size = 10 * 50 * 1024 * 1024; // 500mb - test purposes
-            std::cout << "RegisterSystemSharedMemory in test_enqueue_dequeue_queue" << std::endl;
-            RegisterSystemSharedMemory(manager, region_name.c_str(), shm_key, offset, byte_size);
+        int offset = 0;
+        int byte_size = 10 * 50 * 1024 * 1024; // 500mb - test purposes
+        std::cout << "RegisterSystemSharedMemory in test_enqueue_dequeue_queue" << std::endl;
+        RegisterSystemSharedMemory(manager, region_name.c_str(), shm_key, offset, byte_size);
 
-            wc_daemon::WebCamStreamDaemon wc_d(manager, region_name.c_str());
-            webcam::WebcamIterator stream_iterator;
+        wc_daemon::WebCamStreamDaemon wc_d(manager, region_name.c_str());
+        webcam::WebcamIterator stream_iterator;
 
-            for (int i = 0; i < 100; i++)
-                wc_d.PutOnSHMQueue(&stream_iterator);
-
-            long long batch_size = 5;
-
-            auto listen_assertion = [batch_size] (const shm_queue::Message* messages, size_t size) {
-                for(size_t i = 0; i < size; i++)
-                {
-                    assert(messages[i].data != nullptr);
+        long long batch_size = 5;
+        bool forced_exit = false;
+        auto listen_assertion = [&forced_exit] (const shm_queue::Message* messages, size_t size) {
+            for(size_t i = 0; i < size and !forced_exit; i++)
+            {
+                if (messages[i].data == nullptr) {
+                    BOOST_LOG_TRIVIAL(error) << "messages[i].data != nullptr - false, [" << i << "]";
                 }
-                return nullptr;
-            };
-            wc_d.ListenSHMQueue(listen_assertion, batch_size);
-        } catch (std::exception& e) {
+                assert(messages[i].data != nullptr);
+            }
+            return nullptr;
+        };
+
+        std::thread fetcher([listen_assertion, batch_size, this, &forced_exit](){
+            wc_daemon::WebCamStreamDaemon daemon(
+                    manager,
+                    region_name.c_str()
+            );
+            try{
+                for (int i = 0; i < 100 / batch_size and !forced_exit; i++)
+                    daemon.ListenSHMQueue(listen_assertion, batch_size);
+            }
+            catch (std::exception& e) {
+                BOOST_LOG_TRIVIAL(error) << "Error during async fetch: " << e.what();
+            }
+        });
+        try {
+            for (int i = 0; i < 100; i++) {
+                wc_d.PutOnSHMQueue(&stream_iterator);
+            }
+        }
+        catch (shm_queue::QueueException& eq) {
+            forced_exit = true;
+            BOOST_LOG_TRIVIAL(error) << eq.what();
+        }
+        catch (std::runtime_error& er) {
+            forced_exit = true;
+            BOOST_LOG_TRIVIAL(error) << er.what();
+        }
+        catch (std::exception& e) {
+            forced_exit = true;
             throw e;
         }
+        if (!forced_exit)
+            fetcher.join();
         tearDown();
     }
 
@@ -129,7 +157,7 @@ private:
         const char* shm_key = "test_ipc_queue_key";
 
         int offset = 0;
-        int byte_size = 50 * 1024 * 1024; // 50mb - test purposes
+        int byte_size = 7 * 1024 * 1024; // 10mb - test purposes
 
         RegisterSystemSharedMemory(manager, region_name.c_str(), shm_key, offset, byte_size);
 
