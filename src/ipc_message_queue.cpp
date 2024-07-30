@@ -20,10 +20,9 @@ ToRelationalPointer(void* base_addr, void* ptr)
 
 
 shm_queue::Message*
-GetFromSHM(void* message_start)
+GetFromSHM(void* message_start, void* low_bound, bool ack=true)
 {
     auto* msg = new shm_queue::Message;
-    msg->processed = true;
     void* temp;
 
     temp = shm_queue::Message::GetPtrOnDataLengthOnSHM(message_start);
@@ -33,17 +32,21 @@ GetFromSHM(void* message_start)
 
     ulong position;
     memcpy(&position,  temp, sizeof(typeof msg->nextMessageStart));
-    msg->nextMessageStart = FromRelationalPointer(message_start, position);
+    msg->nextMessageStart = FromRelationalPointer(low_bound, position);
 
     msg->data = new u_char[msg->dataLength];
     temp = shm_queue::Message::GetPtrOnDataOnSHM(message_start);
     memcpy(msg->data, temp, msg->dataLength * sizeof(u_char));
+    auto* is_processed = (std::atomic_bool*) shm_queue::Message::GetPtrOnProcessedOnSHM(message_start);
+    if (ack)
+        is_processed->exchange(true);
+    msg->processed = is_processed;
     return msg;
 }
 
 
 void
-PutOnSHM(shm_queue::Message* msg, void*& message_start)
+PutOnSHM(shm_queue::Message* msg, void*& message_start, void* low_bound)
 {
     size_t message_size = msg->MessageSizeOnSHM();
     if (!message_start)
@@ -57,8 +60,8 @@ PutOnSHM(shm_queue::Message* msg, void*& message_start)
     void* temp;
 
     temp = shm_queue::Message::GetPtrOnProcessedOnSHM(true_message_start);
-
-    memcpy(temp, &msg->processed, sizeof(bool));
+    msg->processed = new std::atomic_bool(false);
+    memcpy(temp, msg->processed, sizeof(std::atomic_bool));
 
     temp = shm_queue::Message::GetPtrOnDataLengthOnSHM(true_message_start);
 
@@ -67,7 +70,7 @@ PutOnSHM(shm_queue::Message* msg, void*& message_start)
     temp = shm_queue::Message::GetPtrOnNextOnSHM(true_message_start);
     auto* pos = reinterpret_cast<ulong*>(temp);
     *pos = (ulong) true_message_start + message_size;
-    ulong relational_pos = ToRelationalPointer(true_message_start, (void*)(*pos));
+    ulong relational_pos = ToRelationalPointer(low_bound, (void*)(*pos));
     memcpy(
         temp,
         &relational_pos,
@@ -84,50 +87,13 @@ PutOnSHM(shm_queue::Message* msg, void*& message_start)
     message_start = true_message_start;
 }
 
-void
-incrementQueueStat(void* metric, long long message_cnt)
-{
-    shm_queue::QueueMetric* metric_demarshaled;
-    metric_demarshaled = static_cast<shm_queue::QueueMetric*>(metric);
-    metric_demarshaled->message_cnt += message_cnt;
-}
-
-
-void
-setup_Head(void* metric, void* probable_head)
-{
-    shm_queue::QueueMetric* metric_demarshaled;
-    metric_demarshaled = static_cast<shm_queue::QueueMetric*>(metric);
-    if (!metric_demarshaled->head_position)
-        metric_demarshaled->head_position = probable_head;
-}
-
-
 shm_queue::QueueMetric*
 shm_queue::GetQueueMetric(SharedMemoryManager& manager, const char* region_name)
 {
     void* metric;
     manager.GetMemoryInfo(region_name, 0, sizeof(shm_queue::QueueMetric), &metric);
-    auto* metric_demarshaled = new shm_queue::QueueMetric;
-    memcpy(&metric_demarshaled->message_cnt, metric, sizeof(size_t));
-
-    ulong head_position_offset;
-
-    memcpy(&head_position_offset, (void*)((ulong)metric + sizeof(size_t)), sizeof(void*));
-    if (head_position_offset >= QueueMetric::struct_size())
-        metric_demarshaled->head_position = FromRelationalPointer(metric, head_position_offset);
-    else
-        metric_demarshaled->head_position = FromRelationalPointer(metric, QueueMetric::struct_size());
-
-    ulong rear_position_offset = 0;
-
-    memcpy(&rear_position_offset, (void*)((ulong)metric + sizeof(size_t) + sizeof(void*)), sizeof(void*));
-    if (rear_position_offset >= QueueMetric::struct_size())
-        metric_demarshaled->rear_position = FromRelationalPointer(metric, rear_position_offset);
-    else
-        metric_demarshaled->rear_position = nullptr;
-
-    return metric_demarshaled;
+    auto metric_demarshalled = (shm_queue::QueueMetric*) metric;
+    return metric_demarshalled;
 }
 
 
@@ -135,21 +101,14 @@ void
 shm_queue::InitializeQueue(SharedMemoryManager& manager, const char* region_name)
 {
     // queue flag
-    auto* region_info = manager.GetMemoryMap(region_name);
-    auto* metric_demarshaled = GetQueueMetric(manager, region_name);
-    metric_demarshaled->message_cnt = 0;
-    // queue data
-    void* queueStartAddress = nullptr;
-    manager.GetMemoryInfo(
-            region_name,
-            shm_queue::QueueMetric::struct_size(),
-            region_info->byte_size_ - shm_queue::QueueMetric::struct_size(),
-            &queueStartAddress
-    );
-    metric_demarshaled->head_position = queueStartAddress;
-    metric_demarshaled->rear_position = nullptr;
-    metric_demarshaled->DumpQueueMetric(region_info->mapped_addr_);
-    delete metric_demarshaled;
+    void* metric;
+    manager.GetMemoryInfo(region_name, 0, sizeof(shm_queue::QueueMetric), &metric);
+    new (metric) shm_queue::QueueMetric{
+        std::atomic_flag(false),
+        std::atomic_size_t(0),
+        sizeof(shm_queue::QueueMetric),
+        0
+    };
 }
 
 std::vector<void*>
@@ -175,8 +134,8 @@ AnyMessageInProgress(const std::vector<void*>& addresses)
 {
     for(auto address: addresses)
     {
-        bool processed = *static_cast<bool*>(shm_queue::Message::GetPtrOnProcessedOnSHM(address));
-        if (!processed)
+        auto processed = static_cast<std::atomic_bool*>(shm_queue::Message::GetPtrOnProcessedOnSHM(address));
+        if (!processed->load(std::memory_order_relaxed))
         {
             return true;
         }
@@ -200,25 +159,25 @@ JoinListener(void*& head, shm_queue::Message* msg)
 void
 shm_queue::Enqueue(SharedMemoryManager& manager, Message *msg, const char* region_name)
 {
-    shm_queue::QueueMetric* metric = GetQueueMetric(manager, region_name);
-    BOOST_LOG_TRIVIAL(info) << "Published " << metric->message_cnt << " message";
+    QueueMetric* metric = GetQueueMetric(manager, region_name);
+    metric->Acquire();
+    BOOST_LOG_TRIVIAL(info) << "Published " << metric->message_cnt.load(std::memory_order_relaxed) << " message";
 
     void* queueStartAddress;
     manager.GetMemoryInfo(
             region_name,
-            shm_queue::QueueMetric::struct_size(),
-            manager.GetMemoryMap(region_name)->byte_size_ - shm_queue::QueueMetric::struct_size(),
+            sizeof(QueueMetric),
+            manager.GetMemoryMap(region_name)->byte_size_ - sizeof(QueueMetric),
             &queueStartAddress
     );
-    msg->processed = false;
-    auto* startAddress = metric->rear_position;
+    auto* startAddress = metric->rear_pos_local();
     if (startAddress == nullptr) {
         startAddress = queueStartAddress;
     }
     else
     {
         void** ptrToNextMessage = reinterpret_cast<void**>(Message::GetPtrOnNextOnSHM(startAddress));
-        startAddress = FromRelationalPointer(startAddress, (ulong)*ptrToNextMessage);
+        startAddress = FromRelationalPointer(queueStartAddress, (ulong)*ptrToNextMessage);
     }
     auto region_info = *manager.GetMemoryMap(region_name);
     if (!region_info.mapped_addr_)
@@ -227,9 +186,15 @@ shm_queue::Enqueue(SharedMemoryManager& manager, Message *msg, const char* regio
     }
     if ((ulong)queueStartAddress + region_info.byte_size_ <= (ulong) startAddress + msg->MessageSizeOnSHM()) // queue overflow
     {
+        metric->Unlock();
         BOOST_LOG_TRIVIAL(info) << "Message queue overflow detected; Joining listener";
+        if (metric->message_cnt.load(std::memory_order_relaxed) == 0 and metric->head_pos_local() == queueStartAddress) {
+            throw QueueException("Attempted to JoinListener, while message_cnt == 0!");
+        }
         JoinListener(queueStartAddress, msg);
         BOOST_LOG_TRIVIAL(info) << "Listener fetched entire queue";
+        metric->Acquire();
+        BOOST_LOG_TRIVIAL(info) << "Reacquired metric";
         startAddress = queueStartAddress;
     }
 
@@ -238,37 +203,42 @@ shm_queue::Enqueue(SharedMemoryManager& manager, Message *msg, const char* regio
         throw std::runtime_error("Exception during startAddress allocation!");
     }
 
-    PutOnSHM(msg, (void*&)startAddress);
-    metric->rear_position = startAddress;
+    PutOnSHM(
+            msg,
+            (void*&)startAddress,
+            queueStartAddress
+    );
 
-    if (queueStartAddress != startAddress)
-    {
-        setup_Head(metric, startAddress);
-        incrementQueueStat(metric, 1);
+    if(not metric->head_position) {
+        metric->SetHead(startAddress);
     }
-    else
-    {
-        metric->head_position = startAddress;
-        metric->message_cnt = 1;
-    }
-    metric->DumpQueueMetric(region_info.mapped_addr_);
-    delete metric;
+    metric->SetRear(startAddress);
+    metric->message_cnt.fetch_add(1, std::memory_order_seq_cst);
+    metric->Unlock();
+    // metric is part of shm, so we do not delete it
 }
 
 
 shm_queue::Message*
 shm_queue::Deque(SharedMemoryManager& manager, const char* region_name)
 {
-    shm_queue::QueueMetric* metric = GetQueueMetric(manager, region_name);
+    QueueMetric* metric = GetQueueMetric(manager, region_name);
+    metric->Acquire();
+
+    if (not metric->message_cnt.load()) {
+        metric->Unlock();
+        throw QueueException("queue is empty - message_cnt = 0");
+    }
+
     void* temp;
 
-    auto* head = metric->head_position;
+    auto* head = metric->head_pos_local();
     auto* region_info = manager.GetMemoryMap(region_name);
     void* queueStartAddress;
     manager.GetMemoryInfo(
             region_name,
-            QueueMetric::struct_size(),
-            region_info->byte_size_ - QueueMetric::struct_size(),
+            sizeof(QueueMetric),
+            region_info->byte_size_ - sizeof(QueueMetric),
             &queueStartAddress
     );
 
@@ -281,13 +251,17 @@ shm_queue::Deque(SharedMemoryManager& manager, const char* region_name)
     {
         throw std::runtime_error("Queue is improperly allocated!");
     }
-    Message* msg = GetFromSHM(head);
 
-    incrementQueueStat(metric, -1);
-    metric->head_position = FromRelationalPointer(
-            head,
-            *(ulong*)(Message::GetPtrOnNextOnSHM(head))  // omg
-    );
+    Message* msg = GetFromSHM(head, queueStartAddress);
+    if (metric->rear_pos_local() != metric->head_pos_local()) {
+        metric->SetHead(FromRelationalPointer(
+                queueStartAddress,
+                *(ulong*)(Message::GetPtrOnNextOnSHM(head))  // omg
+        ));
+    } else {
+        metric->head_position = 0;
+    }
+
     if (!msg->nextMessageStart)
     {
         throw QueueException("Message queue exceeded!");
@@ -295,41 +269,13 @@ shm_queue::Deque(SharedMemoryManager& manager, const char* region_name)
     temp = Message::GetPtrOnProcessedOnSHM(head);
     if (temp)
     {
-        *((bool*) temp) = true;
+        ((std::atomic_bool*) temp)->exchange(true);
     }
     else
     {
         throw QueueException("Message publish terminated!");
     }
-    metric->DumpQueueMetric(region_info->mapped_addr_);
-    delete metric;
+    metric->message_cnt.fetch_sub(1, std::memory_order_seq_cst);
+    metric->Unlock();
     return msg;
-}
-
-void *shm_queue::QueueMetric::DumpQueueMetric(void *base_addr) {
-    memcpy(base_addr, &message_cnt, sizeof(size_t));
-
-    if (head_position)
-    {
-        ulong head_position_offset = ToRelationalPointer( base_addr, head_position);
-        memcpy((void*)((ulong) base_addr + sizeof(size_t)), &head_position_offset, sizeof(void*));
-    }
-    else
-    {
-        ulong head_position_offset = 0;
-        memcpy((void*)((ulong) base_addr + sizeof(size_t)), &head_position_offset, sizeof(void*));
-    }
-
-
-    if (rear_position){
-        ulong rear_position_offset = ToRelationalPointer( base_addr, rear_position);
-        memcpy((void*)((ulong) base_addr + sizeof(size_t) + sizeof(void*)), &rear_position_offset, sizeof(void*));
-    }
-    else
-    {
-        ulong rear_position_offset = 0;
-        memcpy((void*)((ulong) base_addr + sizeof(size_t) + sizeof(void*)), &rear_position_offset, sizeof(void*));
-    }
-
-    return base_addr;
 }

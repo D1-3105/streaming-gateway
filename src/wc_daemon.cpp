@@ -28,6 +28,9 @@ void wc_daemon::WebCamStreamDaemon::PutOnSHMQueue(void *iter_holder)
     size_t mat_content_offset = 3 * video_constants::int2uchar + video_constants::size_t2uchar;
 
     msg->dataLength = data_bytes + mat_content_offset;
+    if (not msg->dataLength) {
+        throw std::logic_error("Error - frame dataLength cannot be 0");
+    }
     msg->data = new u_char[msg->dataLength];
     int* cols = &mat.cols;
     int* rows = &mat.rows;
