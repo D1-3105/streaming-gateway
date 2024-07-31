@@ -225,7 +225,7 @@ shm_queue::Deque(SharedMemoryManager& manager, const char* region_name)
     QueueMetric* metric = GetQueueMetric(manager, region_name);
     metric->Acquire();
 
-    if (not metric->message_cnt.load()) {
+    if (not metric->message_cnt.load() or metric->head_position == 0) {
         metric->Unlock();
         throw QueueException("queue is empty - message_cnt = 0");
     }
