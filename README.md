@@ -4,6 +4,7 @@ Streaming gateway designed to perform multi-:
 - destination
 - protocol
 - data-type
+
 streaming. 
 
 ## Supported protocols
@@ -27,13 +28,14 @@ This will execute 3 separated processes:
 ## Easy to integrate
 
 To include custom logic you have to provide all three components. Good news: there are some templates, which you could
-use within your application. 
-Review: `src/wc_daemon.h` / `src/wc_daemon.cpp` to review usage of FloWWeaver's default `HandleStreamDaemon` interface
-and boilerplate "main"s for streamer and handler: `webcam_streamer.cpp` / `webcam_handler.cpp`
+use within your application.
+Check `src/wc_daemon.h` / `src/wc_daemon.cpp` to verify the usage of FloWWeaver's default `HandleStreamDaemon` interface
+and the boilerplate "main"s of streamer and handler: `webcam_streamer.cpp` / `webcam_handler.cpp`
 
 ## High performance
 Due to interprocess communication, many applications face performance issues, even if they use a powerful and performant
-tool like C++. FloWWeaver uses a fixed-size shared memory pool to prevent OOM and performance leaks when using the kernel.
+tool like C++. 
+FloWWeaver uses a fixed-size shared memory pool to prevent OOM and performance leaks when using the kernel.
 
 ## Future of this project:
 - Separated Host-Server template is in *development*.
