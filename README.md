@@ -49,6 +49,6 @@ FloWWeaver uses a fixed-size shared memory pool to prevent OOM and performance l
 
 # Contribute and interact
 If you consider this project as part of your own product or want to become a contributor  - feel free to DM me on:
-- Telegram: @lucshe_tebia
+- Telegram: https://t.me/lucshe_tebia
 - EMail: lyerhd@gmail.com
 I'll help you integrate it with your applications or I'll direct your efforts in the right direction. 
