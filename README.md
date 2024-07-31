@@ -39,7 +39,7 @@ FloWWeaver uses a fixed-size shared memory pool to prevent OOM and performance l
 
 ## Future of this project:
 - Separated Host-Server template is in *development*.
-- FlyMyAI (@FlyMyAI) integration
+- FlyMyAI (flymy.ai) integration
 - Nginx-Unit integration
 - Pingora integration
 - nvidia/Triton-Inference-Server integration
