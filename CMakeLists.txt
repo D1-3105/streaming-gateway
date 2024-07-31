@@ -35,7 +35,7 @@ add_definitions(-DASIO_DISABLE_BOOST_DATE_TIME)
 add_definitions(-DASIO_DISABLE_BOOST_REGEX)
 
 # executables and libs
-add_executable(streaming_gateway_crow src/main.cpp
+add_executable(flowweave src/main.cpp
         src/cli.cpp
         src/http.cpp
         src/logging.cpp
@@ -149,8 +149,8 @@ add_executable(
 )
 
 # flags for libs
-target_compile_options(streaming_gateway_crow PUBLIC -g)
-target_link_options(streaming_gateway_crow PUBLIC -g)
+target_compile_options(flowweave PUBLIC -g)
+target_link_options(flowweave PUBLIC -g)
 target_compile_options(shared_memory_manager PUBLIC -g)
 target_link_options(shared_memory_manager PUBLIC -g)
 target_link_options(tests PUBLIC -g)
@@ -162,7 +162,7 @@ target_compile_options(video_handler PUBLIC -g)
 target_compile_options(tcp_streamer PUBLIC -g)
 
 # linking
-target_link_libraries(streaming_gateway_crow ${Boost_LIBRARIES} ${OpenCV_LIBS} Boost::log -lrt -lpthread -ldl)
+target_link_libraries(flowweave ${Boost_LIBRARIES} ${OpenCV_LIBS} Boost::log -lrt -lpthread -ldl)
 target_link_libraries(shared_memory_manager ${Boost_LIBRARIES} Boost::log -lpthread -ldl)
 target_link_libraries(tests shared_memory_manager ${Boost_LIBRARIES} ${OpenCV_LIBS} Boost::log -lrt -lpthread -ldl)
 target_link_libraries(video_streamer shared_memory_manager ${OpenCV_LIBS} ${Boost_LIBRARIES} Boost::log -lrt -lpthread -ldl)
