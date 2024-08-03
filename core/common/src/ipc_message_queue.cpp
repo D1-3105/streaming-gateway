@@ -186,15 +186,16 @@ shm_queue::Enqueue(SharedMemoryManager& manager, Message *msg, const char* regio
     }
     if ((ulong)queueStartAddress + region_info.byte_size_ <= (ulong) startAddress + msg->MessageSizeOnSHM()) // queue overflow
     {
-        metric->Unlock();
-        BOOST_LOG_TRIVIAL(info) << "Message queue overflow detected; Joining listener";
         if (metric->message_cnt.load(std::memory_order_relaxed) == 0 and metric->head_pos_local() == queueStartAddress) {
-            throw QueueException("Attempted to JoinListener, while message_cnt == 0!");
+            // do nothing, because there is no messages and JoinListener is not required
+        } else {
+            BOOST_LOG_TRIVIAL(info) << "Message queue overflow detected; Joining listener";
+            metric->Unlock();
+            JoinListener(queueStartAddress, msg);
+            BOOST_LOG_TRIVIAL(info) << "Listener fetched entire queue";
+            metric->Acquire();
+            BOOST_LOG_TRIVIAL(info) << "Reacquired metric";
         }
-        JoinListener(queueStartAddress, msg);
-        BOOST_LOG_TRIVIAL(info) << "Listener fetched entire queue";
-        metric->Acquire();
-        BOOST_LOG_TRIVIAL(info) << "Reacquired metric";
         startAddress = queueStartAddress;
     }
 

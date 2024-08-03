@@ -82,13 +82,23 @@ void stream_daemon::HandleStreamDaemon::ListenSHMQueue
 
     for (size_t i = 0; i < prefetch_count; i++)
     {
-        wait_for_messages(*memoryManager_, region_name_);
-        try {
-            message_buffer[i] = *shm_queue::Deque(*memoryManager_, region_name_);
-            prefetched ++;
-        } catch(shm_queue::QueueException& e) {
-            BOOST_LOG_TRIVIAL(error) << e.what();
-        }
+
+        do {
+            wait_for_messages(*memoryManager_, region_name_);
+            try {
+                message_buffer[i] = *shm_queue::Deque(*memoryManager_, region_name_);
+                if (message_buffer[i].dataLength) {
+                    prefetched++;
+                    break;
+                } else {
+                    BOOST_LOG_TRIVIAL(error) << "Received empty message in batch: " << i
+                    << "; Waiting for normal message";
+                }
+            } catch (shm_queue::QueueException &e) {
+                BOOST_LOG_TRIVIAL(error) << e.what();
+                continue;
+            }
+        } while(true);
     }
     callback(message_buffer, prefetched);
 }

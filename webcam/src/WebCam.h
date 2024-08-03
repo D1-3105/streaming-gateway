@@ -36,7 +36,7 @@ namespace webcam{
                 {
                     break;
                 }
-                BOOST_LOG_TRIVIAL(info) << retries++;
+                BOOST_LOG_TRIVIAL(info) << "Retrying to obtain new frame " << retries++;
                 cv::waitKey(1);
             }
             return frame;

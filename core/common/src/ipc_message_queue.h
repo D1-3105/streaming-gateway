@@ -94,6 +94,16 @@ namespace shm_queue
         void SetHead(void* base_addr) {
             this->head_position.exchange(ulong(base_addr) - ulong(this));
         }
+
+        std::string ToString() {
+            std::stringstream ss;
+            ss << "Metric{"
+                << "\n\tmessage_cnt: " << message_cnt << ";"
+                << "\n\thead_position: " << head_position << ";"
+                << "\n\trear_position: " << rear_position << ";"
+                ;
+            return ss.str();
+        }
     };
     shm_queue::QueueMetric* GetQueueMetric(SharedMemoryManager& manager, const char* region_name);
     void InitializeQueue(SharedMemoryManager & manager, const char* region_name);
