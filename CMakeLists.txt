@@ -5,35 +5,10 @@ project(FloWWeaver_managed)  # raw FloWWeaver - in core/
 
 add_subdirectory(core)
 add_subdirectory(webcam)
+add_subdirectory(TCPStreamer)
 
 include_directories(core)
 include_directories(webcam)
-
-add_executable(
-        tcp_streamer
-
-        TCPStreamer/TCPStreamer.cpp
-        TCPStreamer/TCPStreamer.h
-        TCPStreamer/main.cpp
-)
-
-add_executable(
-        tcp_producer
-
-        TCPStreamer/tcp_producing.cpp
-        TCPStreamer/tcp_producing.h
-        TCPStreamer/TCPPublisher.h
-        TCPStreamer/tcp_frame_producer_main.cpp
-)
-
-# flags for libs
-
-target_compile_options(tcp_streamer PUBLIC -g)
-
-find_package(ZLIB REQUIRED)
-target_link_libraries(tcp_streamer webcam shared_memory_manager common ${ZLIB_LIBRARIES})
-target_link_libraries(tcp_producer webcam shared_memory_manager common ${OpenCV_LIBS} ${Boost_LIBRARIES} ${ZLIB_LIBRARIES} -lrt -lpthread -ldl)
-
 
 # Option to enable or disable building of tests
 set(BUILD_TESTS ON CACHE BOOL "Build the unit tests." FORCE)
