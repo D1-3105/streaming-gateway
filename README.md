@@ -1,3 +1,4 @@
+Checkout https://github.com/D1-3105/go_video_streamer for newer version!
 # FloWWeaver
 Streaming gateway designed to perform multi-: 
 - source
